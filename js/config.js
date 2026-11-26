@@ -21,25 +21,31 @@ export const CONFIG = {
     },
     "recall": {
       "easy": {
-        "startSize": 3,
-        "maxSize": 5,
+        "size": 4,
         "startBlocks": 3,
         "flashMs": 1600,
-        "lives": 3
+        "lives": 3,
+        "perBlock": 10,
+        "perLevel": 20,
+        "maxFill": 0.55
       },
       "normal": {
-        "startSize": 3,
-        "maxSize": 6,
-        "startBlocks": 3,
-        "flashMs": 1200,
-        "lives": 3
+        "size": 5,
+        "startBlocks": 4,
+        "flashMs": 1300,
+        "lives": 3,
+        "perBlock": 10,
+        "perLevel": 20,
+        "maxFill": 0.55
       },
       "hard": {
-        "startSize": 4,
-        "maxSize": 7,
+        "size": 6,
         "startBlocks": 5,
-        "flashMs": 900,
-        "lives": 3
+        "flashMs": 1000,
+        "lives": 3,
+        "perBlock": 10,
+        "perLevel": 20,
+        "maxFill": 0.55
       },
       "stages": {
         "startSize": 3,
@@ -47,8 +53,11 @@ export const CONFIG = {
         "startBlocks": 3,
         "flashMs": 1600,
         "minFlashMs": 700,
+        "flashStepMs": 60,
         "lives": 3,
-        "stages": true
+        "perBlock": 10,
+        "perLevel": 20,
+        "maxFill": 0.55
       }
     },
     "pipes": {

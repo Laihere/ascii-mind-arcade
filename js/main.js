@@ -281,4 +281,13 @@ show("home");
 requestAnimationFrame(frame);
 
 // For automated tests / curious students in the console.
-window.__mind = { get game() { return game; } };
+window.__mind = {
+  get game() { return game; },
+  // page pixel centre of a tap zone (tests)
+  zoneCenter(id) {
+    const z = renderer.lastZones.find((q) => q.id === id);
+    if (!z) return null;
+    const b = canvas.getBoundingClientRect();
+    return [b.left + ((z.x + z.w / 2) / renderer.cols) * b.width, b.top + ((z.y + z.h / 2) / renderer.rows) * b.height];
+  },
+};

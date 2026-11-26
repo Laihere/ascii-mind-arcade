@@ -1,6 +1,7 @@
 // The game list: menu title, how-to-play text and the class that runs it.
 import { StubGame } from "./stub.js";
 import { CodeBreaker } from "./codebreaker.js";
+import { BlockRecall } from "./recall.js";
 
 export const GAMES = {
   codebreaker: {
@@ -11,9 +12,9 @@ export const GAMES = {
   },
   recall: {
     title: "BLOCK RECALL",
-    blurb: "Blocks light up for a moment, then hide.\nTap every block you saw. Each level adds more. 3 lives.",
+    blurb: "Blocks light up for a moment, then hide.\nTap every block you saw. Each level adds one more.\nA wrong tap costs a life (3 lives).",
     diffs: ["easy", "normal", "hard", "stages"],
-    Game: StubGame,
+    Game: BlockRecall,
   },
   pipes: {
     title: "PIPE LINK",

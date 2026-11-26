@@ -19,9 +19,11 @@ export function fmtTime(sec) {
 // Top bar: title on the left, info on the right, rule under it, seed just below on the left.
 export function hud(r, title, right, seed) {
   r.text(1, 0, title, C.accent, { bold: true });
-  r.text(r.cols - 1 - r.hudInset - right.length, 0, right, C.fg);
+  // narrow screen: info moves down to the seed line so it doesn't run into the title
+  const fits = title.length + 3 + right.length + r.hudInset <= r.cols;
+  r.text(r.cols - 1 - r.hudInset - right.length, fits ? 0 : 2, right, C.fg);
   for (let x = 0; x < r.cols; x++) r.put(x, 1, "─", C.faint);
-  if (seed) r.text(1, 2, `seed ${seed}`, C.dim);
+  if (seed) r.text(1, 2, fits ? `seed ${seed}` : String(seed), C.dim);
 }
 
 // A tappable button: " LABEL " on a filled background. Returns its width.
