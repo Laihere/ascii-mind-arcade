@@ -2,13 +2,14 @@
 // Clear a level -> one more block next time. A wrong tap costs a life and replays the
 // level with a new pattern. EASY/NORMAL/HARD keep one board size; STAGES grows the
 // board and shortens the flash as you go.
-import { C, hud, fmtTime } from "../ui.js";
+import { hud, panel, fmtTime } from "../ui.js";
+import { T } from "../theme.js";
 
-const LIT = "#ffcc4d";
-const GOOD = "#5cff8a";
-const BAD = "#ff5c5c";
-const HIDDEN = "#0d2416";
-const INK = "#05070a";
+const LIT = T.accent;
+const GOOD = T.good;
+const BAD = T.bad;
+const HIDDEN = "#3a3a8c";
+const INK = T.ink;
 
 // Board size, block count and flash time for a level.
 export function levelParams(cfg, level) {
@@ -116,47 +117,47 @@ export class BlockRecall {
 
   draw(r) {
     const hearts = "♥".repeat(this.lives) + "·".repeat(Math.max(0, this.cfg.lives - this.lives));
-    hud(r, this.title, `LV ${this.level}  ${hearts}  ${this.score} pts`, this.rng.seed);
+    hud(r, this.title, `LV ${this.level}  ${hearts}  ${this.score} PTS`, this.rng.seed);
 
-    // tiles as square as the char cells allow (a cell is ~0.6 as wide as tall)
+    // square tiles in pixels (a cell is 0.6 as wide as tall), as big as fit
     const n = this.size;
-    const top = 4;
+    const top = 4.6;
     const availH = r.rows - top - 4;
-    const availW = r.cols - 2;
-    let th = Math.max(1, Math.floor((availH + 1) / n) - 1);
-    let tw = Math.max(2, Math.round(th / 0.6));
-    if (n * (tw + 1) - 1 > availW) {
-      tw = Math.max(2, Math.floor((availW + 1) / n) - 1);
-      th = Math.max(1, Math.min(th, Math.round(tw * 0.6)));
-    }
-    const gw = n * (tw + 1) - 1;
-    const gh = n * (th + 1) - 1;
-    const x0 = Math.floor((r.cols - gw) / 2);
-    const y0 = top + Math.floor((availH - gh) / 2);
+    const availW = r.cols - 3;
+    const gap = 0.35; // rows between tiles
+    const th = Math.min(5, (availH - gap * (n - 1)) / n, ((availW - (gap / 0.6) * (n - 1)) * 0.6) / n);
+    const tw = th / 0.6;
+    const gapW = gap / 0.6;
+    const gw = n * tw + (n - 1) * gapW;
+    const gh = n * th + (n - 1) * gap;
+    const x0 = (r.cols - gw) / 2;
+    const y0 = top + (availH - gh) / 2;
+    panel(r, x0 - 0.8, y0 - 0.5, gw + 1.6, gh + 1);
 
     const showAll = this.phase === "show" || this.phase === "missed";
+    const mark = (tx, ty, text, color) => {
+      const size = Math.min(1.6, th * 0.4);
+      r.label(tx + tw / 2, ty + th / 2 - size / 2, text, color, { size, align: "center" });
+    };
     for (let i = 0; i < n * n; i++) {
-      const tx = x0 + (i % n) * (tw + 1);
-      const ty = y0 + Math.floor(i / n) * (th + 1);
-      const cx = tx + Math.floor(tw / 2);
-      const cy = ty + Math.floor(th / 2);
+      const tx = x0 + (i % n) * (tw + gapW);
+      const ty = y0 + Math.floor(i / n) * (th + gap);
       if (i === this.wrong) {
-        r.fill(tx, ty, tw, th, BAD);
-        r.put(cx, cy, "X", INK, { bold: true });
+        r.block(tx, ty, tw, th, BAD, { inset: 0 });
+        mark(tx, ty, "X", INK);
       } else if (this.found.has(i) || (this.phase === "cleared" && this.pattern.has(i))) {
-        r.fill(tx, ty, tw, th, GOOD);
-        r.put(cx, cy, "✓", INK, { bold: true });
+        r.block(tx, ty, tw, th, GOOD, { inset: 0 });
+        mark(tx, ty, "✓", INK);
       } else if (showAll && this.pattern.has(i)) {
-        r.fill(tx, ty, tw, th, LIT);
-        r.put(cx, cy, "◆", INK);
+        r.block(tx, ty, tw, th, LIT, { inset: 0 });
       } else {
-        r.fill(tx, ty, tw, th, HIDDEN);
-        r.put(cx, cy, "·", C.dim);
+        r.block(tx, ty, tw, th, HIDDEN, { inset: 0, bevel: 0.7 });
       }
       r.zone(tx, ty, tw, th, "t" + i);
     }
 
-    const color = this.phase === "missed" ? C.danger : this.phase === "recall" ? C.fg : C.accent;
-    r.centerText(Math.min(r.rows - 2, y0 + gh + 2), this.msg, color, { bold: true });
+    const color = this.phase === "missed" ? T.bad : this.phase === "recall" ? T.text : T.accent;
+    const size = 0.95;
+    r.label(r.cols / 2, Math.min(r.rows - 2, y0 + gh + 1.4), this.msg.toUpperCase(), color, { size, align: "center", shadow: "#000" });
   }
 }

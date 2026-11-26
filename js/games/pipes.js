@@ -1,7 +1,8 @@
 // PIPE LINK: every tile is a pipe piece turned at random. Tap a tile to turn it 90°.
 // Water comes in at S (left) and must reach F (right). Puzzles are made solvable by
 // first carving a random route S -> F, then filling the rest with decoy pieces.
-import { C, hud, button, fmtTime } from "../ui.js";
+import { hud, button, panel, fmtTime } from "../ui.js";
+import { T } from "../theme.js";
 
 // Openings as bits: N=1 E=2 S=4 W=8
 export const N = 1, E = 2, S = 4, W = 8;
@@ -126,11 +127,12 @@ export function puzzlePoints(cfg, pathLen, par, moves, seconds) {
   return pathLen * cfg.perPathTile + spare * cfg.perSpareMove + timeBonus;
 }
 
-const PIPE = "#3f7a4c";
-const LINKED = "#9dffb0";
-const WATER = "#5ce1ff";
-const BG_A = "#0a1810";
-const BG_B = "#0e2216";
+const PIPE = "#7a7ac8"; // not connected yet
+const LINKED = T.good; // connected to S
+const WATER = T.water; // flowing after a win
+const TILE_A = "#1a1a44";
+const TILE_B = "#202052";
+const OUTLINE = "#06061a";
 
 export class PipeLink {
   constructor({ title, cfg, rng }, hooks) {
@@ -197,7 +199,7 @@ export class PipeLink {
       this.score += pts;
       this.phase = "flowing";
       this.timer = 0;
-      this.msg = `CONNECTED in ${this.moves} (par ${this.p.par})  +${pts}`;
+      this.msg = `CONNECTED IN ${this.moves} (PAR ${this.p.par}) +${pts}`;
     }
   }
 
@@ -210,60 +212,92 @@ export class PipeLink {
     return false;
   }
 
+  // One pipe tile: square-ish in pixels; arms are thick bars from the centre to the edges.
+  drawTile(r, x, y, tw, th, m, color, bg) {
+    r.block(x, y, tw, th, bg, { inset: 0.08, bevel: 0.35 });
+    const t = th * 0.34; // pipe thickness (rows)
+    const tc = t / 0.6; // same in cols
+    const o = th * 0.06; // outline (rows)
+    const oc = o / 0.6;
+    const cx = x + tw / 2;
+    const cy = y + th / 2;
+    const arms = [];
+    if (m & N) arms.push([cx - tc / 2, y, tc, th / 2 + t / 2]);
+    if (m & S) arms.push([cx - tc / 2, cy - t / 2, tc, th / 2 + t / 2]);
+    if (m & W) arms.push([x, cy - t / 2, tw / 2 + tc / 2, t]);
+    if (m & E) arms.push([cx - tc / 2, cy - t / 2, tw / 2 + tc / 2, t]);
+    // dark outline first (only on the sides, so neighbouring tiles join up), then the pipe
+    for (const [ax, ay, aw, ah] of arms) {
+      const vertical = ah > aw;
+      if (vertical) r.bar(ax - oc, ay, aw + 2 * oc, ah, OUTLINE);
+      else r.bar(ax, ay - o, aw, ah + 2 * o, OUTLINE);
+    }
+    for (const [ax, ay, aw, ah] of arms) r.bar(ax, ay, aw, ah, color);
+    // highlight stripe along each arm for a rounded-tube look
+    for (const [ax, ay, aw, ah] of arms) {
+      if (ah > aw) r.bar(ax + tc * 0.18, ay, tc * 0.18, ah, "rgba(255,255,255,0.35)");
+      else r.bar(ax, ay + t * 0.18, aw, t * 0.18, "rgba(255,255,255,0.35)");
+    }
+  }
+
   draw(r) {
     const { w, h, rs, rf, tiles } = this.p;
     const right = this.stages
-      ? `ST ${this.stage + 1}/${this.stages.length}  ${this.score} pts`
-      : `${this.moves} moves  ${fmtTime(this.time)}`;
+      ? `ST ${this.stage + 1}/${this.stages.length}  ${this.score} PTS`
+      : `${this.moves} MOVES  ${fmtTime(this.time)}`;
     hud(r, this.title, right, this.rng.seed);
 
-    // tile size: 5x3 cells when there's room (looks square), else 3x3, else 3x1
-    const top = 3;
-    const bottom = this.stages ? 4 : 2;
+    // square tiles (in pixels), as big as fit; S and F blocks sit just outside each side
+    const top = 4.4;
+    const bottom = this.stages ? 6.5 : 3;
     const availH = r.rows - top - bottom;
-    const tw = w * 5 + 6 <= r.cols ? 5 : 3;
-    const th = h * 3 <= availH ? 3 : 1;
+    const side = (thGuess) => 0.9 + Math.max(1.4, Math.min(2.2, thGuess * 0.7)) / 0.6; // cols per side
+    let th = Math.min(4, availH / h, ((r.cols - 2 * side(2)) * 0.6) / w);
+    th = Math.min(th, ((r.cols - 2 * side(th) - 0.4) * 0.6) / w); // tile height (rows)
+    const tw = th / 0.6; // tile width (cols)
     const gw = w * tw;
     const gh = h * th;
-    const x0 = Math.floor((r.cols - gw) / 2);
-    const y0 = top + Math.floor((availH - gh) / 2);
-    const cx = Math.floor(tw / 2);
-    const cy = Math.floor(th / 2);
+    const x0 = (r.cols - gw) / 2;
+    const y0 = top + (availH - gh) / 2;
 
     const flowing = this.phase === "flowing" || this.phase === "over";
     const wet = (i) => flowing && this.flow.reach.get(i) <= this.timer / 0.05;
 
+    panel(r, x0 - 0.6, y0 - 0.35, gw + 1.2, gh + 0.7);
     for (let i = 0; i < w * h; i++) {
       const gx = i % w;
       const gy = Math.floor(i / w);
       const tx = x0 + gx * tw;
       const ty = y0 + gy * th;
-      const m = tiles[i];
-      const linked = this.flow.reach.has(i);
-      const color = wet(i) ? WATER : linked ? LINKED : PIPE;
-      const style = linked ? { bold: true } : undefined;
-      r.fill(tx, ty, tw, th, (gx + gy) % 2 ? BG_A : BG_B);
-      if (m & N) for (let y = 0; y < cy; y++) r.put(tx + cx, ty + y, "║", color, style);
-      if (m & S) for (let y = cy + 1; y < th; y++) r.put(tx + cx, ty + y, "║", color, style);
-      if (m & W) for (let x = 0; x < cx; x++) r.put(tx + x, ty + cy, "═", color, style);
-      if (m & E) for (let x = cx + 1; x < tw; x++) r.put(tx + x, ty + cy, "═", color, style);
-      r.put(tx + cx, ty + cy, GLYPH[m] || "+", color, style);
+      const color = wet(i) ? WATER : this.flow.reach.has(i) ? LINKED : PIPE;
+      this.drawTile(r, tx, ty, tw, th, tiles[i], color, (gx + gy) % 2 ? TILE_A : TILE_B);
       r.zone(tx, ty, tw, th, "p" + i);
     }
 
-    // S on the left, F on the right
-    const sy = y0 + rs * th + cy;
-    const fy = y0 + rf * th + cy;
-    r.text(x0 - 2, sy, "S", C.accent, { bold: true });
-    r.put(x0 - 1, sy, "═", flowing ? WATER : C.accent, { bold: true });
-    r.put(x0 + gw, fy, "═", this.flow.solved && wet(rf * w + w - 1) ? WATER : C.accent, { bold: true });
-    r.text(x0 + gw + 1, fy, "F", C.accent, { bold: true });
+    // S (left) and F (right): yellow blocks joined to the board by a pipe stub
+    const t = th * 0.34;
+    const bs = Math.max(1.4, Math.min(2.2, th * 0.7)); // block height (rows)
+    const bw = bs / 0.6;
+    const mark = (bx, cy, letter, pipeColor, stubX, stubW) => {
+      r.bar(stubX, cy - t / 2 - th * 0.06, stubW, t + th * 0.12, OUTLINE);
+      r.bar(stubX, cy - t / 2, stubW, t, pipeColor);
+      r.block(bx, cy - bs / 2, bw, bs, T.accent, { inset: 0 });
+      r.label(bx + bw / 2, cy - bs * 0.3, letter, T.ink, { size: bs * 0.6, align: "center" });
+    };
+    const sy = y0 + rs * th + th / 2;
+    const fy = y0 + rf * th + th / 2;
+    const sPipe = flowing ? WATER : this.flow.reach.size ? LINKED : PIPE;
+    mark(x0 - 0.9 - bw, sy, "S", sPipe, x0 - 0.9, 0.9);
+    const fWet = this.flow.solved && wet(rf * w + w - 1);
+    mark(x0 + gw + 0.9, fy, "F", fWet ? WATER : PIPE, x0 + gw, 0.9);
 
-    const my = y0 + gh + 1;
-    r.centerText(my, this.msg, this.phase === "play" ? C.dim : C.accent, { bold: this.phase !== "play" });
+    const my = y0 + gh + 0.9;
+    const col = this.phase === "play" ? T.muted : T.good;
+    r.label(r.cols / 2, my, this.msg.toUpperCase(), col, { size: this.phase === "play" ? 0.75 : 0.95, align: "center", shadow: "#000" });
     if (this.stages) {
-      const label = "END RUN";
-      button(r, Math.floor((r.cols - label.length - 2) / 2), my + 2, label, "end", { disabled: this.phase !== "play" });
+      const size = 0.8;
+      const bw = Math.ceil(r.labelW("END RUN", size) + 4);
+      button(r, (r.cols - bw) / 2, my + 2, "END RUN", "end", { h: 3, w: bw, size, disabled: this.phase !== "play" });
     }
   }
 }
