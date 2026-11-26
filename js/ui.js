@@ -36,9 +36,14 @@ export function button(r, x, y, text, id, opts = {}) {
   const h = opts.h || 3;
   const w = opts.w || Math.ceil(r.labelW(text, size) + 4);
   const base = opts.disabled ? T.panelHi : opts.primary ? T.accent : opts.color || T.edge;
-  r.block(x, y, w, h, base, { inset: 0.15, bevel: opts.disabled ? 0.3 : 1 });
+  r.block(x, y, w, h, base, { inset: 0.15, flat: !!opts.disabled });
   const ink = opts.disabled ? T.muted : opts.primary || opts.color ? T.ink : T.text;
   r.label(x + w / 2, y + (h - size) / 2, text, ink, { size, align: "center" });
   if (!opts.disabled) r.zone(x, y, w, h, id);
   return w;
+}
+
+// Flat rounded panel (board backgrounds, trays).
+export function panel(r, x, y, w, h) {
+  r.bar(x, y, w, h, T.panel, { round: 8, stroke: T.edge, lw: 2 });
 }

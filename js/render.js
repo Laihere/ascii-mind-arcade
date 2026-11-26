@@ -101,7 +101,7 @@ export class Renderer {
     this.ops.push({ k: "circle", x: cx, y: cy, rad: radius, color, o: opts });
   }
 
-  // Plain filled rectangle. opts: { alpha, round (px corner radius) }
+  // Plain filled rectangle. opts: { alpha, round (px corner radius), stroke (border colour), lw }
   bar(x, y, w, h, color, opts = {}) {
     this.ops.push({ k: "bar", x, y, w, h, color, o: opts });
   }
@@ -168,10 +168,15 @@ export class Renderer {
       else if (op.k === "bar") {
         ctx.fillStyle = op.color;
         const r = op.o.round || 0;
-        if (r) {
+        if (r || op.o.stroke) {
           ctx.beginPath();
           ctx.roundRect(op.x * cellW, op.y * cellH, op.w * cellW, op.h * cellH, r);
           ctx.fill();
+          if (op.o.stroke) {
+            ctx.strokeStyle = op.o.stroke;
+            ctx.lineWidth = op.o.lw || 2;
+            ctx.stroke();
+          }
         } else ctx.fillRect(op.x * cellW, op.y * cellH, op.w * cellW, op.h * cellH);
       } else if (op.k === "label") this.paintLabel(op);
     }
