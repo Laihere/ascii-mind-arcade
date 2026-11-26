@@ -163,29 +163,68 @@ export class CodeBreaker {
   draw(r) {
     const { slots, symbols, tries } = this.cfg;
     hud(r, this.title, `#${this.solved + 1}  ${this.score} PTS  ${fmtTime(this.total)}`, this.rng.seed);
-
-    // ---- vertical layout (cell units, fractions ok) ----
     const top = 4.2;
-    const trayD = Math.min(3, ((r.cols - 4) / symbols - 0.9) * 0.6); // palette circle diameter (rows)
-    const bottomH = 1.8 + (trayD + 1.2) + 0.6 + 3 + 0.8;
-    const boardH = r.rows - top - bottomH;
-    const pitch = Math.min(2.8, (boardH - 1.2) / (tries + 1.3));
+    const btnH = 3;
+
+    if (r.cols >= 56) {
+      // WIDE (landscape): board on the left, legend + tray + buttons on the right
+      const pitch = Math.min(2.8, (r.rows - top - 0.8 - 1.2) / (tries + 1.3));
+      const b = this.boardSize(pitch);
+      const trayCols = 2;
+      const trayD = Math.min(3.4, (r.rows - top - 12) / 3.6);
+      const tray = this.traySize(trayD, trayCols);
+      const rightW = Math.max(tray.w, 22);
+      const gap = 3;
+      const bx = (r.cols - (b.w + gap + rightW)) / 2;
+      this.drawBoard(r, bx, top, pitch, b);
+      const rx = bx + b.w + gap;
+      const colH = 2.6 + tray.h + 0.8 + 1.6 + btnH;
+      let y = top + Math.max(0, (b.h - colH) / 2);
+      this.drawLegend(r, rx + rightW / 2, y, true);
+      y += 2.6;
+      this.drawTray(r, rx + (rightW - tray.w) / 2, y, trayD, trayCols);
+      y += tray.h + 0.8;
+      this.drawMessage(r, rx + rightW / 2, y);
+      y += 1.6;
+      this.drawActions(r, rx + rightW / 2, y, btnH);
+      return;
+    }
+
+    // TALL (portrait): board, legend/message, tray, buttons stacked
+    const trayD = Math.min(3, ((r.cols - 4) / symbols - 0.9) * 0.6);
+    const tray = this.traySize(trayD, symbols);
+    const bottomH = 1.8 + tray.h + 0.6 + btnH + 0.8;
+    const pitch = Math.min(2.8, (r.rows - top - bottomH - 1.2) / (tries + 1.3));
+    const b = this.boardSize(pitch);
+    this.drawBoard(r, (r.cols - b.w) / 2, top, pitch, b);
+    let y = top + b.h + 0.5;
+    if (this.msg) this.drawMessage(r, r.cols / 2, y);
+    else this.drawLegend(r, r.cols / 2, y, false);
+    y += 1.8;
+    this.drawTray(r, (r.cols - tray.w) / 2, y, trayD, symbols);
+    y += tray.h + 0.6;
+    this.drawActions(r, r.cols / 2, y, btnH);
+  }
+
+  // Board geometry for a row pitch (cells).
+  boardSize(pitch) {
+    const { slots, tries } = this.cfg;
     const d = pitch * 0.8; // peg diameter (rows)
-    const pegW = d / 0.6 + 1.1; // horizontal step between pegs (cols)
+    const pegW = d / 0.6 + 1.1; // step between pegs (cols)
     const clueD = Math.min(d * 0.42, (pitch - 0.12) / 2);
     const clueW = 2 * (clueD / 0.6) + 0.25;
     const numW = 3;
     const rowW = numW + slots * pegW + 1 + clueW;
-    const x0 = (r.cols - rowW) / 2;
+    return { d, pegW, clueD, numW, rowW, w: rowW + 2.4, h: pitch * (tries + 1.3) + 0.9 };
+  }
+
+  drawBoard(r, bx, by, pitch, b) {
+    const { slots, tries } = this.cfg;
+    const { d, pegW, clueD, numW } = b;
+    const x0 = bx + 1.2;
     const pegX = (i) => x0 + numW + i * pegW + pegW / 2;
     const clueX = x0 + numW + slots * pegW + 0.6;
-
-    // board panel
-    const bx = x0 - 1.2;
-    const bw = rowW + 2.4;
-    const by = top;
-    const bh = pitch * (tries + 1.3) + 0.9;
-    panel(r, bx, by, bw, bh);
+    panel(r, bx, by, b.w, b.h);
 
     // secret row
     let y = by + 0.5;
@@ -199,7 +238,7 @@ export class CodeBreaker {
       }
     }
     y += pitch * 1.3;
-    r.bar(bx + 0.8, y - pitch * 0.15 - 0.06, bw - 1.6, 0.12, T.edge);
+    r.bar(bx + 0.8, y - pitch * 0.15 - 0.06, b.w - 1.6, 0.12, T.edge);
 
     // guess rows
     const current = this.phase === "play" ? this.rows.length : -1;
@@ -207,7 +246,7 @@ export class CodeBreaker {
     for (let t = 0; t < tries; t++) {
       const cy = y + t * pitch + pitch / 2;
       const past = this.rows[t];
-      if (t === current) r.bar(bx + 0.4, cy - pitch / 2 + 0.05, bw - 0.8, pitch - 0.1, T.panelHi, { round: 6 });
+      if (t === current) r.bar(bx + 0.4, cy - pitch / 2 + 0.05, b.w - 0.8, pitch - 0.1, T.panelHi, { round: 6 });
       const numSize = Math.min(0.9, pitch * 0.45);
       r.label(x0 + numW - 1, cy - numSize / 2, String(t + 1), t === current ? T.accent : T.muted, { size: numSize, align: "right" });
       for (let i = 0; i < slots; i++) {
@@ -222,47 +261,72 @@ export class CodeBreaker {
       }
       if (past) this.clues(r, clueX, cy, clueD, past.exact, past.near);
     }
+  }
 
-    // legend + message
-    y = by + bh + 0.5;
-    if (this.msg) {
-      const col = this.phase === "failed" ? T.bad : T.good;
-      r.label(r.cols / 2, y, this.msg, col, { size: 1, align: "center", shadow: "#000" });
-    } else {
-      // legend: drawn clue pegs + words
-      const ls = 0.7;
-      const text1 = "RIGHT SPOT";
-      const text2 = "RIGHT COLOUR";
-      const gap = 2.5;
-      const w = 1.6 + r.labelW(text1, ls) + gap + 1.6 + r.labelW(text2, ls);
-      let lx = (r.cols - w) / 2;
-      r.circle(lx + 0.6, y + 0.5, 0.33, T.text);
-      r.label(lx + 1.6, y + 0.5 - ls / 2, text1, T.muted, { size: ls });
-      lx += 1.6 + r.labelW(text1, ls) + gap;
-      r.circle(lx + 0.6, y + 0.5, 0.28, T.text, { ring: 2 });
-      r.label(lx + 1.6, y + 0.5 - ls / 2, text2, T.muted, { size: ls });
+  // Key to the clue pegs. cx = centre; stacked = one item per line.
+  drawLegend(r, cx, y, stacked) {
+    const ls = 0.7;
+    const items = [
+      ["RIGHT SPOT", (x, yy) => r.circle(x, yy, 0.33, T.text)],
+      ["RIGHT COLOUR", (x, yy) => r.circle(x, yy, 0.28, T.text, { ring: 2 })],
+    ];
+    if (stacked) {
+      const w = 1.6 + r.labelW(items[1][0], ls);
+      items.forEach(([text, icon], k) => {
+        const lx = cx - w / 2;
+        icon(lx + 0.6, y + k * 1.2 + 0.5);
+        r.label(lx + 1.6, y + k * 1.2 + 0.5 - ls / 2, text, T.muted, { size: ls });
+      });
+      return;
     }
-    y += 1.8;
+    const gap = 2.5;
+    const w = 3.2 + r.labelW(items[0][0], ls) + gap + r.labelW(items[1][0], ls);
+    let lx = cx - w / 2;
+    for (const [text, icon] of items) {
+      icon(lx + 0.6, y + 0.5);
+      r.label(lx + 1.6, y + 0.5 - ls / 2, text, T.muted, { size: ls });
+      lx += 1.6 + r.labelW(text, ls) + gap;
+    }
+  }
 
-    // colour tray
+  drawMessage(r, cx, y) {
+    if (!this.msg) return;
+    const col = this.phase === "failed" ? T.bad : T.good;
+    r.label(cx, y, this.msg, col, { size: 1, align: "center", shadow: "#000" });
+  }
+
+  traySize(trayD, perRow) {
     const step = trayD / 0.6 + 0.9;
-    const trayW = symbols * step;
-    const tx = (r.cols - trayW) / 2;
-    panel(r, tx - 0.6, y, trayW + 1.2, trayD + 1.2);
-    for (let s = 0; s < symbols; s++) {
-      const cx = tx + s * step + step / 2;
-      const cy = y + 0.6 + trayD / 2;
-      this.peg(r, cx, cy, trayD, s, { dim: this.phase !== "play" });
-      r.zone(cx - step / 2, y, step, trayD + 1.2, "sym" + s);
-    }
-    y += trayD + 1.2 + 0.6;
+    const lines = Math.ceil(this.cfg.symbols / perRow);
+    return { step, w: perRow * step + 1.2, h: lines * (trayD + 0.6) + 0.6 };
+  }
 
-    // actions: UNDO (secondary) + CHECK (primary, the one filled accent button)
+  drawTray(r, x, y, trayD, perRow) {
+    const { step, w, h } = this.traySize(trayD, perRow);
+    panel(r, x, y, w, h);
+    for (let s = 0; s < this.cfg.symbols; s++) {
+      const col = s % perRow;
+      const line = Math.floor(s / perRow);
+      const cx = x + 0.6 + col * step + step / 2;
+      const top = y + 0.3 + line * (trayD + 0.6);
+      this.peg(r, cx, top + 0.3 + trayD / 2, trayD, s, { dim: this.phase !== "play" });
+      r.zone(cx - step / 2, top, step, trayD + 0.6, "sym" + s);
+    }
+  }
+
+  // UNDO (secondary) + CHECK (primary, the one filled accent button), centred on cx.
+  drawActions(r, cx, y, h) {
     const size = 0.85;
     const uw = Math.ceil(r.labelW("UNDO", size) + 5);
     const cw = Math.ceil(r.labelW("CHECK", size) + 6);
-    const ax = (r.cols - uw - cw - 1.5) / 2;
-    button(r, ax, y, "UNDO", "undo", { h: 3, w: uw, size, disabled: this.phase !== "play" || this.filled === 0 });
-    button(r, ax + uw + 1.5, y, "CHECK", "check", { h: 3, w: cw, size, primary: true, disabled: this.phase !== "play" || this.filled < slots });
+    const ax = cx - (uw + cw + 1.5) / 2;
+    button(r, ax, y, "UNDO", "undo", { h, w: uw, size, disabled: this.phase !== "play" || this.filled === 0 });
+    button(r, ax + uw + 1.5, y, "CHECK", "check", {
+      h,
+      w: cw,
+      size,
+      primary: true,
+      disabled: this.phase !== "play" || this.filled < this.cfg.slots,
+    });
   }
 }

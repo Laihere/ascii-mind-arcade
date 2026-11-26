@@ -274,3 +274,23 @@ body.touch .pause-btn { top: max(var(--s2), env(safe-area-inset-top)); right: ma
 }
 .c-pink { background: #ff4fd8; } .c-yellow { background: #ffd23f; } .c-cyan { background: #22d3ee; }
 .c-green { background: #3ddc84; } .c-orange { background: #ff9f1c; }
+
+/* very short (phone sideways): smaller logo, drop the footer line */
+@media (max-height: 420px) {
+  .logo { width: min(220px, 36vw); }
+  #home > .hint { display: none; }
+}
+
+/* tablets / big screens: scale the menus up */
+@media (min-width: 700px) and (min-height: 700px) {
+  .btn { font-size: 1rem; min-width: 21rem; min-height: 60px; }
+  .menu { gap: var(--s4); }
+  .menu.row .btn { min-width: 10rem; }
+  h2 { font-size: 1.6rem; }
+  .tagline { font-size: 0.9rem; }
+  .hint { font-size: 1rem; }
+  .blurb { font-size: 1.1rem; }
+  .scores { font-size: 0.85rem; }
+  .tab { font-size: 0.8rem; min-height: 48px; padding: var(--s3) var(--s4); }
+  .big { font-size: 1.4rem; }
+}

@@ -1,12 +1,13 @@
-# ASCII MIND ARCADE
+# MIND ARCADE
 
-Three puzzle games drawn entirely in text characters, in the browser. Every round is a
-new random puzzle. Works with a mouse, a keyboard or a phone. No installs and no server:
-it is plain HTML + JavaScript, so it runs on GitHub Pages.
+Three puzzle games in a retro arcade style (pixel font, chunky neon blocks), in the browser.
+Every round is a new random puzzle. Works with a mouse, a keyboard, a phone or a tablet,
+upright or sideways. No installs and no server: plain HTML + JavaScript on a `<canvas>`,
+so it runs on GitHub Pages.
 
 | Game | How to play | Modes |
 | --- | --- | --- |
-| **CODE BREAKER** | Guess the secret 4-colour code (colours can repeat) in 10 tries. After each guess: `●` = right colour, right place, `○` = right colour, wrong place. Crack code after code until you miss one. | one mode |
+| **CODE BREAKER** | Guess the secret 4-colour code (colours can repeat) in 10 tries. After each guess the clue pegs show: solid white = right colour, right place; white ring = right colour, wrong place. Crack code after code until you miss one. | one mode |
 | **BLOCK RECALL** | Blocks light up for a moment, then hide. Tap every block you saw. Each level adds a block; a wrong tap costs one of 3 lives. | EASY / NORMAL / HARD (fixed 4x4 / 5x5 / 6x6 board) · STAGES (board grows 3x3 → 7x7, flash gets shorter) |
 | **PIPE LINK** | Tap a pipe to turn it. Link **S** to **F** so the water flows. | EASY / NORMAL / HARD (one 5x5 / 7x7 / 9x9 board) · STAGES (10 boards, 4x4 → 9x9; END RUN keeps your points) |
 
@@ -52,10 +53,12 @@ python3 -m http.server 8000
 
 ```
 index.html            menus (home, difficulty, pause, result, leaderboard, share)
-css/style.css         green-screen look, phone layout
+css/style.css         arcade look (tokens mirror js/theme.js), phone + tablet layout
+js/theme.js           colour tokens + block colours
+assets/fonts/         Press Start 2P pixel font (SIL OFL 1.1, see THIRD_PARTY.md)
 config.json           all difficulty + points numbers  ->  python/build_config.py  ->  js/config.js
 js/main.js            screen router, taps/keys, main loop
-js/render.js          character-grid renderer on a <canvas>, tap zones
+js/render.js          grid renderer on a <canvas>: raised blocks, circles, bars, pixel text, tap zones
 js/rng.js             seeded random numbers (mulberry32)
 js/leaderboard.js     top-10 per game + mode in localStorage
 js/ui.js              shared drawing helpers (top bar, buttons)
