@@ -33,6 +33,10 @@
       <h2 id="pick-title"></h2>
       <p id="pick-blurb" class="blurb"></p>
       <nav class="menu row" id="diff-menu"></nav>
+      <div id="time-row" class="time-row hidden">
+        <span class="label" id="time-label">TIME ATTACK LENGTH</span>
+        <nav class="tabs" id="time-tabs" aria-labelledby="time-label"></nav>
+      </div>
       <p id="diff-hint" class="hint"></p>
       <form id="seed-form" class="seed-form" autocomplete="off">
         <label for="seed-input">SEED</label>
@@ -53,6 +57,7 @@
         <button class="tab" data-game="pipes">PIPES</button>
       </nav>
       <nav class="tabs" id="board-diffs"></nav>
+      <nav class="tabs hidden" id="board-mins" aria-label="Time limit"></nav>
       <p id="board-msg" class="big hidden"></p>
       <table class="scores">
         <thead><tr><th>#</th><th>NAME</th><th id="board-score-th">SCORE</th><th>RESULT</th></tr></thead>

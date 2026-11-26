@@ -29,7 +29,14 @@ export const CONFIG = {
         "timeBonusSec": 90,
         "timeBonusPerSec": 2,
         "mode": "timed",
-        "timeLimitSec": 180
+        "timeLimitSec": 180,
+        "minutesOptions": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
       },
       "endless": {
         "slots": 4,

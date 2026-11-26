@@ -7,7 +7,7 @@ so it runs on GitHub Pages.
 
 | Game | How to play | Modes |
 | --- | --- | --- |
-| **CODE BREAKER** | Guess the secret 4-colour code (colours can repeat) in 10 tries. After each guess the clue pegs show: solid white = right colour, right place; white ring = right colour, wrong place. Crack code after code. | STREAK (first miss ends the run) · TIME ATTACK (as many as you can in 3:00; misses just move on) · ENDLESS (never ends, a miss resets the streak; END when you like; board ranks **best streak**) |
+| **CODE BREAKER** | Guess the secret 4-colour code (colours can repeat) in 10 tries. After each guess the clue pegs show: solid white = right colour, right place; white ring = right colour, wrong place. Crack code after code. | STREAK (first miss ends the run) · TIME ATTACK (pick 1-5 minutes, 3 by default; as many as you can, misses just move on; one board per length) · ENDLESS (never ends, a miss resets the streak; END when you like; board ranks **best streak**) |
 | **BLOCK RECALL** | Blocks light up for a moment, then hide. Tap every block you saw. Each level adds a block; a wrong tap costs one of 3 lives. | EASY / NORMAL / HARD (fixed 4x4 / 5x5 / 6x6 board) · STAGES (board grows 3x3 → 7x7, flash gets shorter) |
 | **PIPE LINK** | Tap a pipe to turn it. Link **S** to **F** so the water flows. | EASY / NORMAL / HARD (one 5x5 / 7x7 / 9x9 board) · STAGES (10 boards, 4x4 → 9x9; END RUN keeps your points) |
 
@@ -22,6 +22,14 @@ so it runs on GitHub Pages.
   *Par* = the fewest turns that solve the board.
 
 Leaderboards are kept for each game and mode, saved in the browser only (`localStorage`).
+
+### Fair play
+
+The game runs entirely in the browser. On the live site the secret code is kept in a private
+field and there is no debug hook, so it can't simply be read from the browser console.
+(A test hook, `window.__mind`, exists only when the page is served from `localhost`.)
+Note: the same seed always gives the same codes, so replaying a seed you've already seen is
+an easy "cheat"; use random seeds for leaderboard runs.
 
 ### Seeds: same puzzle for everyone
 

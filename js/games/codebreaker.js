@@ -42,6 +42,9 @@ export function codePoints(cfg, triesUsed, seconds) {
 }
 
 export class CodeBreaker {
+  // Private: not visible when someone inspects the game object in the browser console.
+  #secret = [];
+
   constructor({ title, cfg, rng }, hooks) {
     this.title = title;
     this.cfg = cfg;
@@ -59,7 +62,7 @@ export class CodeBreaker {
 
   newCode() {
     const { slots, symbols, repeats } = this.cfg;
-    this.secret = makeSecret(this.rng, slots, symbols, repeats);
+    this.#secret = makeSecret(this.rng, slots, symbols, repeats);
     this.rows = []; // { guess, exact, near }
     this.guess = new Array(this.cfg.slots).fill(null); // null = empty slot
     this.codeTime = 0;
@@ -114,6 +117,11 @@ export class CodeBreaker {
     });
   }
 
+  // Only for automated tests on localhost (main.js exposes the game there and nowhere else).
+  testSecret() {
+    return this.#secret.slice();
+  }
+
   get filled() {
     return this.guess.filter((g) => g !== null).length;
   }
@@ -138,7 +146,7 @@ export class CodeBreaker {
 
   check() {
     if (this.phase !== "play" || this.filled < this.cfg.slots) return;
-    const { exact, near } = scoreGuess(this.secret, this.guess);
+    const { exact, near } = scoreGuess(this.#secret, this.guess);
     this.rows.push({ guess: this.guess, exact, near });
     this.guess = new Array(this.cfg.slots).fill(null);
     if (exact === this.cfg.slots) {
@@ -265,7 +273,7 @@ export class CodeBreaker {
     let y = by + 0.5;
     const reveal = this.phase !== "play";
     for (let i = 0; i < slots; i++) {
-      if (reveal) this.peg(r, pegX(i), y + pitch / 2, d, this.secret[i]);
+      if (reveal) this.peg(r, pegX(i), y + pitch / 2, d, this.#secret[i]);
       else {
         const w = d / 0.6;
         r.block(pegX(i) - w / 2, y + pitch / 2 - d / 2, w, d, T.edge, { inset: 0 });

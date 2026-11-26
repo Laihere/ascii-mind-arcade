@@ -109,6 +109,38 @@ function show(next, focusId) {
   if (focusId) $(focusId).focus();
 }
 
+// ---- time-limit choice (modes whose config has minutesOptions, e.g. TIME ATTACK) ----
+const minuteOpts = (id, diff) => (CONFIG.games[id][diff] || {}).minutesOptions || null;
+const defaultMinutes = (id, diff) => Math.round(((CONFIG.games[id][diff] || {}).timeLimitSec || 180) / 60);
+const chosenMinutes = {}; // per game, remembered
+const timedDiff = (id) => GAMES[id].diffs.find((d) => minuteOpts(id, d));
+
+function minuteTabs(nav, opts, on, onPick) {
+  nav.replaceChildren();
+  for (const m of opts) {
+    const b = document.createElement("button");
+    b.className = "tab" + (m === on ? " on" : "");
+    b.textContent = `${m} MIN`;
+    b.setAttribute("aria-pressed", String(m === on));
+    b.addEventListener("click", () => onPick(m));
+    nav.appendChild(b);
+  }
+}
+
+function renderTimeRow(id) {
+  const td = timedDiff(id);
+  $("time-row").classList.toggle("hidden", !td);
+  if (!td) return;
+  const on = chosenMinutes[id] ?? defaultMinutes(id, td);
+  minuteTabs($("time-tabs"), minuteOpts(id, td), on, (m) => {
+    chosenMinutes[id] = m;
+    renderTimeRow(id);
+  });
+}
+
+// "TIME ATTACK 3 MIN" style label for a mode
+const modeLabel = (id, diff, mins) => DIFF_LABELS[diff] + (minuteOpts(id, diff) ? ` ${mins} MIN` : "");
+
 // ---- pick a game + difficulty ----
 function showPick(id) {
   current.id = id;
@@ -117,6 +149,7 @@ function showPick(id) {
   const diffs = GAMES[id].diffs;
   makeButtons($("diff-menu"), "btn", diffs, (d) => startGame(d));
   $("diff-hint").textContent = GAMES[id].hint || "";
+  renderTimeRow(id);
   show("pick");
   document.querySelector(`#diff-menu [data-diff="${defaultDiff(id)}"]`).focus();
 }
@@ -132,8 +165,14 @@ function startGame(diff = current.diff, seed = seedFromInput()) {
   lastDiff[current.id] = diff;
   current.seed = seed || randomSeed();
   const info = GAMES[current.id];
+  let cfg = CONFIG.games[current.id][diff];
+  current.minutes = null;
+  if (minuteOpts(current.id, diff)) {
+    current.minutes = chosenMinutes[current.id] ?? defaultMinutes(current.id, diff);
+    cfg = { ...cfg, timeLimitSec: current.minutes * 60 };
+  }
   game = new info.Game(
-    { title: info.title, cfg: CONFIG.games[current.id][diff], diff, rng: makeRng(current.seed), touch: isTouch },
+    { title: info.title, cfg, diff, rng: makeRng(current.seed), touch: isTouch },
     { onEnd: endGame },
   );
   show("game");
@@ -141,11 +180,11 @@ function startGame(diff = current.diff, seed = seedFromInput()) {
 
 function endGame(result) {
   lastResult = result;
-  const board = boardFor(current.id, current.diff);
+  const board = boardFor(current.id, current.diff, current.minutes);
   $("res-title").textContent = result.title || (result.won ? "SOLVED!" : "GAME OVER");
   $("res-score-label").textContent = result.scoreLabel || "SCORE";
   $("res-score").textContent = result.score;
-  $("res-detail").textContent = `${GAMES[current.id].title}${GAMES[current.id].diffs.length > 1 ? " · " + DIFF_LABELS[current.diff] : ""} · seed ${current.seed} · ${result.detail}`;
+  $("res-detail").textContent = `${GAMES[current.id].title}${GAMES[current.id].diffs.length > 1 ? " · " + modeLabel(current.id, current.diff, current.minutes) : ""} · seed ${current.seed} · ${result.detail}`;
   const top = board.load()[0];
   const qualifies = board.qualifies(result.score);
   $("res-note").textContent = !qualifies ? (result.score > 0 ? `Not quite top ${CONFIG.leaderboard.size} this time.` : "")
@@ -160,20 +199,27 @@ function endGame(result) {
 
 // ---- leaderboard ----
 const boards = {};
-function boardFor(id, diff) {
-  const key = `${id}.${diff}`;
+// One board per game + mode (+ time limit, so 1-minute and 5-minute runs don't compete).
+function boardFor(id, diff, minutes) {
+  const key = `${id}.${diff}` + (minuteOpts(id, diff) ? `.${minutes ?? defaultMinutes(id, diff)}m` : "");
   if (!boards[key]) boards[key] = new Leaderboard(CONFIG.leaderboard, key);
   return boards[key];
 }
-let view = { id: "codebreaker", diff: "classic" };
+let view = { id: "codebreaker", diff: "classic", minutes: null };
 
 function showBoard(highlightId = null, message = "") {
   for (const t of document.querySelectorAll("#board-games .tab")) t.classList.toggle("on", t.dataset.game === view.id);
   const diffs = GAMES[view.id].diffs;
   if (!diffs.includes(view.diff)) view.diff = defaultDiff(view.id);
   makeButtons($("board-diffs"), "tab", diffs.length > 1 ? diffs : [], (d) => { view.diff = d; showBoard(); }, view.diff);
+  const mopts = minuteOpts(view.id, view.diff);
+  $("board-mins").classList.toggle("hidden", !mopts);
+  if (mopts) {
+    if (!mopts.includes(view.minutes)) view.minutes = chosenMinutes[view.id] ?? defaultMinutes(view.id, view.diff);
+    minuteTabs($("board-mins"), mopts, view.minutes, (m) => { view.minutes = m; showBoard(); });
+  }
   $("board-score-th").textContent = (GAMES[view.id].scoreLabels || {})[view.diff] || "SCORE";
-  const rows = boardFor(view.id, view.diff).load();
+  const rows = boardFor(view.id, view.diff, view.minutes).load();
   const body = $("board-rows");
   body.replaceChildren();
   rows.forEach((r, i) => {
@@ -195,7 +241,7 @@ function showBoard(highlightId = null, message = "") {
 function saveScore(e) {
   e.preventDefault();
   if (!lastResult) return;
-  const board = boardFor(current.id, current.diff);
+  const board = boardFor(current.id, current.diff, current.minutes);
   const raw = $("name-input").value;
   const err = board.validate(raw);
   if (err) {
@@ -205,7 +251,7 @@ function saveScore(e) {
   }
   const { rank, id } = board.add(raw, lastResult.score, lastResult.detail);
   lastResult = null;
-  view = { id: current.id, diff: current.diff };
+  view = { id: current.id, diff: current.diff, minutes: current.minutes };
   game = null;
   showBoard(id, rank ? `${raw.trim()} placed #${rank}!` : `${raw.trim()}: not in the top ${CONFIG.leaderboard.size} this time.`);
 }
@@ -268,8 +314,8 @@ $("btn-board").addEventListener("click", () => showBoard());
 $("btn-board-back").addEventListener("click", quitToMenu);
 $("btn-board-play").addEventListener("click", () => showPick(view.id));
 $("btn-board-clear").addEventListener("click", () => {
-  if (confirm(`Clear ${GAMES[view.id].title} ${DIFF_LABELS[view.diff]} scores on this browser?`)) {
-    boardFor(view.id, view.diff).clear();
+  if (confirm(`Clear ${GAMES[view.id].title} ${modeLabel(view.id, view.diff, view.minutes)} scores on this browser?`)) {
+    boardFor(view.id, view.diff, view.minutes).clear();
     showBoard();
   }
 });
@@ -331,14 +377,17 @@ function frame(now) {
 show("home");
 requestAnimationFrame(frame);
 
-// For automated tests / curious students in the console.
-window.__mind = {
-  get game() { return game; },
-  // page pixel centre of a tap zone (tests)
-  zoneCenter(id) {
-    const z = renderer.lastZones.find((q) => q.id === id);
-    if (!z) return null;
-    const b = canvas.getBoundingClientRect();
-    return [b.left + ((z.x + z.w / 2) / renderer.cols) * b.width, b.top + ((z.y + z.h / 2) / renderer.rows) * b.height];
-  },
-};
+// Test hook, only when running on this computer (never on the live site),
+// so nobody can read the game's state (e.g. the secret code) from the console.
+if (["localhost", "127.0.0.1"].includes(location.hostname)) {
+  window.__mind = {
+    get game() { return game; },
+    // page pixel centre of a tap zone
+    zoneCenter(id) {
+      const z = renderer.lastZones.find((q) => q.id === id);
+      if (!z) return null;
+      const b = canvas.getBoundingClientRect();
+      return [b.left + ((z.x + z.w / 2) / renderer.cols) * b.width, b.top + ((z.y + z.h / 2) / renderer.rows) * b.height];
+    },
+  };
+}

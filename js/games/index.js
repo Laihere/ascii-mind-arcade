@@ -8,7 +8,7 @@ export const GAMES = {
     title: "CODE BREAKER",
     blurb: "Guess the secret 4-colour code (colours can repeat) in 10 tries.\nClue pegs: solid = right colour, right place · ring = right colour, wrong place.\nFewer tries + faster = more points.",
     diffs: ["classic", "timed", "endless"],
-    hint: "STREAK: one miss ends the run.\nTIME ATTACK: crack as many as you can in 3:00.\nENDLESS: never ends; a miss resets your streak. Best streak goes on the board.",
+    hint: "STREAK: one miss ends the run.\nTIME ATTACK: crack as many as you can before time runs out (pick 1-5 min).\nENDLESS: never ends; a miss resets your streak. Best streak goes on the board.",
     scoreLabels: { endless: "STREAK" }, // leaderboard column (default SCORE)
     Game: CodeBreaker,
   },
