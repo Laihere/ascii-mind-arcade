@@ -177,6 +177,6 @@ export const CONFIG = {
     "nameMax": 12
   },
   "share": {
-    "url": ""
+    "url": "https://laihere.github.io/ascii-mind-arcade/"
   }
 };
