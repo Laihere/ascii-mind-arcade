@@ -181,6 +181,11 @@ function quitToMenu() {
 // ---- share / QR (link + QR image are made by python/make_qr.py) ----
 const shareUrl = (CONFIG.share && CONFIG.share.url) || location.origin + location.pathname;
 
+// No QR yet (python/make_qr.py not run since the repo went live): show just the link.
+const qr = $("share-qr");
+qr.addEventListener("error", () => qr.classList.add("hidden"));
+if (qr.complete && !qr.naturalWidth) qr.classList.add("hidden"); // failed before this script ran
+
 function showShare() {
   $("share-url").textContent = shareUrl;
   $("share-msg").textContent = "";
