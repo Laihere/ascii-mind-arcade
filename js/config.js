@@ -63,15 +63,30 @@ export const CONFIG = {
     "pipes": {
       "easy": {
         "w": 5,
-        "h": 5
+        "h": 5,
+        "perPathTile": 20,
+        "perSpareMove": 10,
+        "spareMoves": 10,
+        "timeBonusSec": 120,
+        "timeBonusPerSec": 2
       },
       "normal": {
         "w": 7,
-        "h": 7
+        "h": 7,
+        "perPathTile": 20,
+        "perSpareMove": 10,
+        "spareMoves": 10,
+        "timeBonusSec": 120,
+        "timeBonusPerSec": 2
       },
       "hard": {
         "w": 9,
-        "h": 9
+        "h": 9,
+        "perPathTile": 20,
+        "perSpareMove": 10,
+        "spareMoves": 10,
+        "timeBonusSec": 120,
+        "timeBonusPerSec": 2
       },
       "stages": {
         "sizes": [
@@ -116,7 +131,12 @@ export const CONFIG = {
             9
           ]
         ],
-        "stages": true
+        "stages": true,
+        "perPathTile": 20,
+        "perSpareMove": 10,
+        "spareMoves": 10,
+        "timeBonusSec": 120,
+        "timeBonusPerSec": 2
       }
     }
   },

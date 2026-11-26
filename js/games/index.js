@@ -1,7 +1,7 @@
 // The game list: menu title, how-to-play text and the class that runs it.
-import { StubGame } from "./stub.js";
 import { CodeBreaker } from "./codebreaker.js";
 import { BlockRecall } from "./recall.js";
+import { PipeLink } from "./pipes.js";
 
 export const GAMES = {
   codebreaker: {
@@ -18,9 +18,9 @@ export const GAMES = {
   },
   pipes: {
     title: "PIPE LINK",
-    blurb: "Tap a pipe to turn it.\nConnect S (start) to F (finish) in as few turns as you can.",
+    blurb: "Tap a pipe to turn it.\nLink S (start) to F (finish) so the water can flow.\nLong routes, few turns and speed = more points.",
     diffs: ["easy", "normal", "hard", "stages"],
-    Game: StubGame,
+    Game: PipeLink,
   },
 };
 
