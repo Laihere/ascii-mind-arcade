@@ -1,31 +1,35 @@
-// Character-grid renderer: the game draws chars into a cols x rows buffer,
-// then flush() paints the buffer onto a <canvas> in a monospace font.
-// Games register tappable zones while drawing; taps are mapped back to them.
+// Grid renderer on a <canvas>. The screen is a cols x rows grid of cells, used for
+// layout and tap zones. Games draw with:
+//   fill()   solid cell backgrounds         block()  raised arcade block (bevelled)
+//   circle() round peg / dot                bar()    solid rectangle (pipes)
+//   label()  pixel-font text                put()/text()  single characters
+// flush() paints it all: fills, then shapes/labels in call order, then characters.
+import { T, PIXEL_FONT, tint } from "./theme.js";
 
-const FONT_STACK = '"Cascadia Mono", "Consolas", "DejaVu Sans Mono", "Menlo", monospace';
-const CHAR_ASPECT = 0.6; // monospace glyph width / height
+const MONO = '"Cascadia Mono", "Consolas", "DejaVu Sans Mono", "Menlo", monospace';
+const CHAR_ASPECT = 0.6; // cell width / height
+const LABEL_EM = 0.7; // pixel-font size as a share of the label height
 
 export class Renderer {
   constructor(canvas, cols, rows) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
+    this.hudInset = 0; // cols kept free top-right (phone pause button sits there)
     this.setGrid(cols, rows);
     window.addEventListener("resize", () => this.resize());
   }
 
-  // Change the grid size (e.g. taller grid on a portrait phone).
   setGrid(cols, rows) {
     this.cols = cols;
     this.rows = rows;
     const n = cols * rows;
     this.chars = new Array(n).fill(" ");
     this.colors = new Array(n).fill("#fff");
-    this.bgs = new Array(n).fill(null); // optional glow box behind a cell
     this.bold = new Uint8Array(n);
-    this.fills = new Array(n).fill(null); // solid cell background
+    this.fills = new Array(n).fill(null);
+    this.ops = [];
     this.zones = [];
     this.lastZones = [];
-    this.hudInset = 0; // cols kept free top-right (phone pause button sits there)
     this.resize();
   }
 
@@ -33,7 +37,6 @@ export class Renderer {
     const dpr = window.devicePixelRatio || 1;
     const availW = window.innerWidth - 4;
     const availH = window.innerHeight - 4;
-    // cell height limited by both axes
     const cellH = Math.max(8, Math.floor(Math.min(availH / this.rows, availW / (this.cols * CHAR_ASPECT))));
     this.cellH = cellH;
     this.cellW = cellH * CHAR_ASPECT;
@@ -44,22 +47,19 @@ export class Renderer {
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const size = Math.floor(cellH * 0.92);
-    this.fontNormal = `${size}px ${FONT_STACK}`;
-    this.fontBold = `bold ${Math.floor(cellH * 1.05)}px ${FONT_STACK}`;
-    this.ctx.textBaseline = "top";
-    this.ctx.textAlign = "center";
+    this.fontNormal = `${Math.floor(cellH * 0.92)}px ${MONO}`;
+    this.fontBold = `bold ${Math.floor(cellH * 1.05)}px ${MONO}`;
   }
 
   clear() {
     this.chars.fill(" ");
-    this.bgs.fill(null);
     this.bold.fill(0);
     this.fills.fill(null);
+    this.ops = [];
     this.zones = [];
   }
 
-  // style: { bg: "css colour" for a glow box behind the char, bold: true }
+  // ---- characters ----
   put(x, y, ch, color, style) {
     x = Math.round(x);
     y = Math.round(y);
@@ -67,38 +67,18 @@ export class Renderer {
     const i = y * this.cols + x;
     this.chars[i] = ch;
     this.colors[i] = color;
-    this.bgs[i] = style && style.bg ? style.bg : null;
     this.bold[i] = style && style.bold ? 1 : 0;
   }
 
-  // Draw a string; spaces are transparent (they don't overwrite).
   text(x, y, str, color, style) {
-    for (let i = 0; i < str.length; i++) {
-      if (str[i] !== " ") this.put(x + i, y, str[i], color, style);
-    }
+    for (let i = 0; i < str.length; i++) if (str[i] !== " ") this.put(x + i, y, str[i], color, style);
   }
 
   centerText(y, str, color, style) {
     this.text(Math.floor((this.cols - str.length) / 2), y, str, color, style);
   }
 
-  // Single-line box outline with its top-left at (x, y), size w x h cells.
-  box(x, y, w, h, color) {
-    this.put(x, y, "┌", color);
-    this.put(x + w - 1, y, "┐", color);
-    this.put(x, y + h - 1, "└", color);
-    this.put(x + w - 1, y + h - 1, "┘", color);
-    for (let i = 1; i < w - 1; i++) {
-      this.put(x + i, y, "─", color);
-      this.put(x + i, y + h - 1, "─", color);
-    }
-    for (let j = 1; j < h - 1; j++) {
-      this.put(x, y + j, "│", color);
-      this.put(x + w - 1, y + j, "│", color);
-    }
-  }
-
-  // Fill a rectangle with a background colour (drawn behind chars, spaces included).
+  // ---- cell fills ----
   fill(x, y, w, h, bg) {
     for (let j = 0; j < h; j++) {
       for (let i = 0; i < w; i++) {
@@ -110,21 +90,46 @@ export class Renderer {
     }
   }
 
-  // Register a tappable area (cells). Later zones win when they overlap.
+  // ---- shapes (all positions/sizes in cells, fractions allowed) ----
+  // Raised arcade block. opts: { inset (cells, default 0.1), flat, alpha, bevel (0-1 strength) }
+  block(x, y, w, h, color, opts = {}) {
+    this.ops.push({ k: "block", x, y, w, h, color, o: opts });
+  }
+
+  // Circle centred at (cx, cy); radius in cell HEIGHTS. opts: { ring (line width in px), shine, alpha, edge }
+  circle(cx, cy, radius, color, opts = {}) {
+    this.ops.push({ k: "circle", x: cx, y: cy, rad: radius, color, o: opts });
+  }
+
+  // Plain filled rectangle. opts: { alpha, round (px corner radius) }
+  bar(x, y, w, h, color, opts = {}) {
+    this.ops.push({ k: "bar", x, y, w, h, color, o: opts });
+  }
+
+  // Pixel-font text. y = top of a line `size` cells tall.
+  // opts: { size (cells, default 1), align: left|center|right, shadow }
+  label(x, y, str, color, opts = {}) {
+    this.ops.push({ k: "label", x, y, str: String(str), color, o: opts });
+  }
+
+  // Width of a label in cells (pixel font: every glyph is 1em wide).
+  labelW(str, size = 1) {
+    return (String(str).length * size * LABEL_EM) / CHAR_ASPECT;
+  }
+
+  // ---- taps ----
   zone(x, y, w, h, id) {
     this.zones.push({ x, y, w, h, id });
   }
 
-  // Page pixel position -> grid cell, or null when outside the canvas.
   cellAt(clientX, clientY) {
     const rect = this.canvas.getBoundingClientRect();
-    const cx = Math.floor(((clientX - rect.left) / rect.width) * this.cols);
-    const cy = Math.floor(((clientY - rect.top) / rect.height) * this.rows);
+    const cx = ((clientX - rect.left) / rect.width) * this.cols;
+    const cy = ((clientY - rect.top) / rect.height) * this.rows;
     if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) return null;
     return { x: cx, y: cy };
   }
 
-  // Id of the zone under a grid cell (from the last frame), or null.
   zoneAt(cell) {
     if (!cell) return null;
     for (let i = this.lastZones.length - 1; i >= 0; i--) {
@@ -134,13 +139,13 @@ export class Renderer {
     return null;
   }
 
+  // ---- paint ----
   flush() {
     const { ctx, cols, rows, cellW, cellH } = this;
-    const n = cols * rows;
-    ctx.fillStyle = "#05070a";
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = T.bg;
     ctx.fillRect(0, 0, cols * cellW, rows * cellH);
 
-    // 1) solid cell fills (tiles, buttons), 2) glow boxes behind single chars
     // runs of the same fill on a row are painted as one rect on whole pixels (no seams)
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; ) {
@@ -155,17 +160,29 @@ export class Renderer {
         x = end;
       }
     }
-    for (let i = 0; i < n; i++) {
-      const bg = this.bgs[i];
-      if (!bg || this.chars[i] === " ") continue;
-      ctx.fillStyle = bg;
-      ctx.fillRect((i % cols) * cellW + cellW * 0.08, Math.floor(i / cols) * cellH + cellH * 0.04, cellW * 0.84, cellH * 0.92);
+
+    for (const op of this.ops) {
+      ctx.globalAlpha = op.o.alpha ?? 1;
+      if (op.k === "block") this.paintBlock(op);
+      else if (op.k === "circle") this.paintCircle(op);
+      else if (op.k === "bar") {
+        ctx.fillStyle = op.color;
+        const r = op.o.round || 0;
+        if (r) {
+          ctx.beginPath();
+          ctx.roundRect(op.x * cellW, op.y * cellH, op.w * cellW, op.h * cellH, r);
+          ctx.fill();
+        } else ctx.fillRect(op.x * cellW, op.y * cellH, op.w * cellW, op.h * cellH);
+      } else if (op.k === "label") this.paintLabel(op);
     }
-    // 3) normal chars, 4) bold chars (font switch only once)
+    ctx.globalAlpha = 1;
+
+    ctx.textBaseline = "top";
+    ctx.textAlign = "center";
     for (const pass of [0, 1]) {
       ctx.font = pass ? this.fontBold : this.fontNormal;
       const dy = pass ? -cellH * 0.04 : 1;
-      for (let i = 0; i < n; i++) {
+      for (let i = 0; i < cols * rows; i++) {
         const ch = this.chars[i];
         if (ch === " " || this.bold[i] !== pass) continue;
         ctx.fillStyle = this.colors[i];
@@ -174,36 +191,118 @@ export class Renderer {
     }
     this.lastZones = this.zones;
   }
+
+  paintBlock({ x, y, w, h, color, o }) {
+    const { ctx, cellW, cellH } = this;
+    const inset = o.inset ?? 0.1;
+    const px = x * cellW + inset * cellW;
+    const py = y * cellH + inset * cellW;
+    const pw = w * cellW - 2 * inset * cellW;
+    const ph = h * cellH - 2 * inset * cellW;
+    if (pw <= 0 || ph <= 0) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(px, py, pw, ph);
+    if (o.flat) return;
+    const b = Math.max(2, Math.min(7, Math.min(pw, ph) * 0.13));
+    const s = o.bevel ?? 1;
+    ctx.fillStyle = tint(color, 0.5 * s);
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px + pw, py);
+    ctx.lineTo(px + pw - b, py + b);
+    ctx.lineTo(px + b, py + b);
+    ctx.lineTo(px + b, py + ph - b);
+    ctx.lineTo(px, py + ph);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = tint(color, -0.45 * s);
+    ctx.beginPath();
+    ctx.moveTo(px + pw, py);
+    ctx.lineTo(px + pw, py + ph);
+    ctx.lineTo(px, py + ph);
+    ctx.lineTo(px + b, py + ph - b);
+    ctx.lineTo(px + pw - b, py + ph - b);
+    ctx.lineTo(px + pw - b, py + b);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  paintCircle({ x, y, rad, color, o }) {
+    const { ctx, cellW, cellH } = this;
+    const cx = x * cellW;
+    const cy = y * cellH;
+    const r = rad * cellH;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    if (o.ring) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = o.ring;
+      ctx.stroke();
+      return;
+    }
+    ctx.fillStyle = color;
+    ctx.fill();
+    if (o.edge) {
+      ctx.strokeStyle = o.edge;
+      ctx.lineWidth = Math.max(1.5, r * 0.12);
+      ctx.stroke();
+    }
+    if (o.shine) {
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.32, cy - r * 0.32, r * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  paintLabel({ x, y, str, color, o }) {
+    const { ctx, cellW, cellH } = this;
+    const size = o.size ?? 1;
+    const fontPx = Math.max(6, Math.round(size * cellH * LABEL_EM));
+    ctx.font = `${fontPx}px ${PIXEL_FONT}`;
+    ctx.textBaseline = "top";
+    ctx.textAlign = o.align || "left";
+    const px = x * cellW;
+    const py = y * cellH + (size * cellH - fontPx) / 2;
+    if (o.shadow) {
+      ctx.fillStyle = o.shadow;
+      ctx.fillText(str, px + Math.max(1, fontPx / 8), py + Math.max(1, fontPx / 8));
+    }
+    ctx.fillStyle = color;
+    ctx.fillText(str, px, py);
+  }
 }
 
-// Slow drifting dots behind the menus.
+// Slow falling single blocks behind the menus.
 export class Ambient {
-  constructor(cols, rows, count = 50) {
+  constructor(cols, rows, colors, count = 18) {
     this.cols = cols;
     this.rows = rows;
-    this.dots = Array.from({ length: count }, () => this.spawn(Math.random() * rows));
+    this.colors = colors;
+    this.items = Array.from({ length: count }, () => this.spawn(Math.random() * rows));
   }
 
   spawn(y) {
-    const layer = Math.random();
+    const size = 1 + Math.random() * 1.5;
     return {
-      x: Math.floor(Math.random() * this.cols),
+      x: Math.random() * this.cols,
       y,
-      speed: 0.6 + layer * 2.5,
-      ch: layer > 0.85 ? "+" : ".",
-      color: layer > 0.85 ? "#4f6a5a" : layer > 0.45 ? "#3c5a48" : "#22382b",
+      size,
+      speed: 0.5 + Math.random() * 1.5,
+      color: this.colors[Math.floor(Math.random() * this.colors.length)],
+      alpha: 0.08 + Math.random() * 0.12,
     };
   }
 
   update(dt) {
-    for (let i = 0; i < this.dots.length; i++) {
-      const d = this.dots[i];
-      d.y += d.speed * dt;
-      if (d.y >= this.rows) this.dots[i] = this.spawn(0);
+    for (let i = 0; i < this.items.length; i++) {
+      const b = this.items[i];
+      b.y += b.speed * dt;
+      if (b.y >= this.rows) this.items[i] = this.spawn(-2);
     }
   }
 
   draw(r) {
-    for (const d of this.dots) r.put(d.x, d.y, d.ch, d.color);
+    for (const b of this.items) r.block(b.x, b.y, b.size, b.size * 0.6, b.color, { alpha: b.alpha, inset: 0 });
   }
 }

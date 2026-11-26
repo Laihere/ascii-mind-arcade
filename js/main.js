@@ -1,5 +1,6 @@
 import { CONFIG } from "./config.js";
 import { Renderer, Ambient } from "./render.js";
+import { BLOCKS, tint } from "./theme.js";
 import { Leaderboard } from "./leaderboard.js";
 import { makeRng, randomSeed } from "./rng.js";
 import { GAMES, DIFF_LABELS } from "./games/index.js";
@@ -25,7 +26,7 @@ function pickGrid() {
 let grid = pickGrid();
 const renderer = new Renderer(canvas, grid.cols, grid.rows);
 renderer.hudInset = isTouch ? 6 : 0;
-let ambient = new Ambient(grid.cols, grid.rows);
+let ambient = new Ambient(grid.cols, grid.rows, BLOCKS);
 
 // Puzzles are turn-based, so the layout can follow rotation even mid-game.
 window.addEventListener("resize", () => {
@@ -33,8 +34,51 @@ window.addEventListener("resize", () => {
   if (next.cols === grid.cols && next.rows === grid.rows) return;
   grid = next;
   renderer.setGrid(grid.cols, grid.rows);
-  ambient = new Ambient(grid.cols, grid.rows);
+  ambient = new Ambient(grid.cols, grid.rows, BLOCKS);
 });
+
+// ---- block-letter logo: every "#" is a raised block, each letter its own colour ----
+const LETTERS = {
+  M: ["#...#", "##.##", "#.#.#", "#...#", "#...#"],
+  I: ["###", ".#.", ".#.", ".#.", "###"],
+  N: ["#...#", "##..#", "#.#.#", "#..##", "#...#"],
+  D: ["####.", "#...#", "#...#", "#...#", "####."],
+  A: [".###.", "#...#", "#####", "#...#", "#...#"],
+  R: ["####.", "#...#", "####.", "#..#.", "#...#"],
+  C: [".####", "#....", "#....", "#....", ".####"],
+  E: ["#####", "#....", "####.", "#....", "#####"],
+};
+function drawLogo(cv) {
+  const words = ["MIND", "ARCADE"];
+  const px = 14; // block size in canvas pixels
+  const widthOf = (w) => [...w].reduce((sum, ch) => sum + LETTERS[ch][0].length + 1, -1);
+  const cols = Math.max(...words.map(widthOf));
+  cv.width = cols * px;
+  cv.height = (5 * 2 + 2) * px;
+  const ctx = cv.getContext("2d");
+  let colour = 0;
+  words.forEach((word, wi) => {
+    let x = Math.floor((cols - widthOf(word)) / 2);
+    for (const ch of word) {
+      const c = BLOCKS[[0, 1, 2, 3, 4, 5, 6, 7][colour++ % 7]];
+      LETTERS[ch].forEach((row, ry) => {
+        [...row].forEach((cell, rx) => {
+          if (cell !== "#") return;
+          const bx = (x + rx) * px;
+          const by = (wi * 6 + ry + (wi ? 1 : 0)) * px;
+          ctx.fillStyle = tint(c, -0.5);
+          ctx.fillRect(bx, by, px, px);
+          ctx.fillStyle = tint(c, 0.45);
+          ctx.fillRect(bx, by, px - 2, px - 2);
+          ctx.fillStyle = c;
+          ctx.fillRect(bx + 3, by + 3, px - 6, px - 6);
+        });
+      });
+      x += LETTERS[ch][0].length + 1;
+    }
+  });
+}
+drawLogo($("logo"));
 
 const panels = { home: $("home"), pick: $("pick"), board: $("board"), share: $("share"), pause: $("pause"), result: $("result") };
 let state = "home";

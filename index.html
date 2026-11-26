@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#05070a">
+  <meta name="theme-color" content="#0b0b1e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <title>ASCII MIND ARCADE</title>
+  <title>MIND ARCADE</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,24 +16,14 @@
 
     <!-- Home -->
     <section id="home" class="panel">
-      <pre class="title" aria-label="MIND ARCADE">
-       █   █ ███ █   █ ████
-       ██ ██  █  ██  █ █   █
-       █ █ █  █  █ █ █ █   █
-       █   █  █  █  ██ █   █
-       █   █ ███ █   █ ████
-
- ███  ████   ████  ███  ████  █████
-█   █ █   █ █     █   █ █   █ █
-█████ ████  █     █████ █   █ ████
-█   █ █  █  █     █   █ █   █ █
-█   █ █   █  ████ █   █ ████  █████</pre>
+      <canvas id="logo" class="logo" role="img" aria-label="MIND ARCADE"></canvas>
+      <p class="tagline blink">SELECT A GAME</p>
       <nav class="menu" id="game-menu">
-        <button class="btn" data-game="codebreaker" autofocus>&gt; CODE BREAKER</button>
-        <button class="btn" data-game="recall">&gt; BLOCK RECALL</button>
-        <button class="btn" data-game="pipes">&gt; PIPE LINK</button>
-        <button id="btn-board" class="btn">&gt; LEADERBOARD</button>
-        <button id="btn-share" class="btn">&gt; PLAY ON YOUR PHONE</button>
+        <button class="btn" data-game="codebreaker" autofocus><span class="chip c-pink"></span>CODE BREAKER</button>
+        <button class="btn" data-game="recall"><span class="chip c-yellow"></span>BLOCK RECALL</button>
+        <button class="btn" data-game="pipes"><span class="chip c-cyan"></span>PIPE LINK</button>
+        <button id="btn-board" class="btn"><span class="chip c-green"></span>HIGH SCORES</button>
+        <button id="btn-share" class="btn"><span class="chip c-orange"></span>PLAY ON PHONE</button>
       </nav>
       <p class="hint">Every round is a new random puzzle. Same seed = same puzzle.</p>
     </section>
@@ -50,13 +40,13 @@
       </form>
       <p class="hint">Leave the seed empty for a random puzzle, or type the same number as a friend.</p>
       <nav class="menu row">
-        <button id="btn-pick-back" class="btn">&lt; BACK</button>
+        <button id="btn-pick-back" class="btn">BACK</button>
       </nav>
     </section>
 
     <!-- Leaderboard -->
     <section id="board" class="panel hidden">
-      <h2>// LEADERBOARD</h2>
+      <h2>HIGH SCORES</h2>
       <nav class="tabs" id="board-games">
         <button class="tab" data-game="codebreaker">CODE</button>
         <button class="tab" data-game="recall">RECALL</button>
@@ -71,20 +61,20 @@
       <p id="board-empty" class="hint hidden">No scores yet. Be the first!</p>
       <p class="hint">Scores are saved in this browser only.</p>
       <nav class="menu row">
-        <button id="btn-board-back" class="btn">&lt; BACK</button>
-        <button id="btn-board-play" class="btn">PLAY</button>
+        <button id="btn-board-back" class="btn">BACK</button>
+        <button id="btn-board-play" class="btn primary">PLAY</button>
         <button id="btn-board-clear" class="btn danger">CLEAR</button>
       </nav>
     </section>
 
     <!-- Share / QR -->
     <section id="share" class="panel hidden">
-      <h2>// SCAN TO PLAY</h2>
+      <h2>SCAN TO PLAY</h2>
       <img id="share-qr" class="qr" src="assets/qr.svg" alt="QR code linking to the game" width="220" height="220">
       <p id="share-url" class="share-url"></p>
       <p id="share-msg" class="hint" aria-live="polite"></p>
       <nav class="menu row">
-        <button id="btn-share-back" class="btn">&lt; BACK</button>
+        <button id="btn-share-back" class="btn">BACK</button>
         <button id="btn-copy" class="btn">COPY LINK</button>
         <button id="btn-native-share" class="btn hidden">SHARE</button>
       </nav>
@@ -94,9 +84,9 @@
     <section id="pause" class="panel dim hidden">
       <h2>PAUSED</h2>
       <nav class="menu">
-        <button id="btn-resume" class="btn">&gt; RESUME</button>
-        <button id="btn-restart" class="btn">&gt; NEW PUZZLE</button>
-        <button id="btn-quit" class="btn">&gt; QUIT TO MENU</button>
+        <button id="btn-resume" class="btn primary">RESUME</button>
+        <button id="btn-restart" class="btn">NEW PUZZLE</button>
+        <button id="btn-quit" class="btn">QUIT TO MENU</button>
       </nav>
       <p class="hint kbd-only">P / Esc to resume</p>
     </section>
@@ -114,12 +104,12 @@
         <input id="name-input" maxlength="12" spellcheck="false" autocapitalize="off" autocorrect="off" enterkeyhint="done">
         <p id="name-error" class="error" aria-live="polite"></p>
         <nav class="menu row">
-          <button type="submit" class="btn">SAVE</button>
+          <button type="submit" class="btn primary">SAVE</button>
           <button type="button" id="btn-skip" class="btn">SKIP</button>
         </nav>
       </form>
       <nav id="res-actions" class="menu row">
-        <button id="btn-again" class="btn">PLAY AGAIN</button>
+        <button id="btn-again" class="btn primary">PLAY AGAIN</button>
         <button id="btn-res-menu" class="btn">MENU</button>
       </nav>
     </section>
