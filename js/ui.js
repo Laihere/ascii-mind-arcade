@@ -16,11 +16,12 @@ export function fmtTime(sec) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-// Top bar: title on the left, seed + extra info on the right, rule under it.
-export function hud(r, title, right) {
+// Top bar: title on the left, info on the right, rule under it, seed just below on the left.
+export function hud(r, title, right, seed) {
   r.text(1, 0, title, C.accent, { bold: true });
-  r.text(r.cols - 1 - right.length, 0, right, C.fg);
+  r.text(r.cols - 1 - r.hudInset - right.length, 0, right, C.fg);
   for (let x = 0; x < r.cols; x++) r.put(x, 1, "─", C.faint);
+  if (seed) r.text(1, 2, `seed ${seed}`, C.dim);
 }
 
 // A tappable button: " LABEL " on a filled background. Returns its width.

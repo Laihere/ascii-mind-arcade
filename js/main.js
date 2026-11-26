@@ -2,7 +2,7 @@ import { CONFIG } from "./config.js";
 import { Renderer, Ambient } from "./render.js";
 import { Leaderboard } from "./leaderboard.js";
 import { makeRng, randomSeed } from "./rng.js";
-import { GAMES, DIFFS } from "./games/index.js";
+import { GAMES, DIFF_LABELS } from "./games/index.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -24,6 +24,7 @@ function pickGrid() {
 
 let grid = pickGrid();
 const renderer = new Renderer(canvas, grid.cols, grid.rows);
+renderer.hudInset = isTouch ? 6 : 0;
 let ambient = new Ambient(grid.cols, grid.rows);
 
 // Puzzles are turn-based, so the layout can follow rotation even mid-game.
@@ -38,7 +39,23 @@ window.addEventListener("resize", () => {
 const panels = { home: $("home"), pick: $("pick"), board: $("board"), share: $("share"), pause: $("pause"), result: $("result") };
 let state = "home";
 let game = null;
-let current = { id: "codebreaker", diff: "normal", seed: 0 };
+let current = { id: "codebreaker", diff: "classic", seed: 0 };
+const lastDiff = {}; // remembered difficulty per game
+
+// Default difficulty for a game: last one played, else NORMAL (or its only mode).
+const defaultDiff = (id) => lastDiff[id] || (GAMES[id].diffs.includes("normal") ? "normal" : GAMES[id].diffs[0]);
+
+function makeButtons(nav, cls, diffs, onClick, on) {
+  nav.replaceChildren();
+  for (const d of diffs) {
+    const b = document.createElement("button");
+    b.className = cls + (d === on ? " on" : "");
+    b.dataset.diff = d;
+    b.textContent = DIFF_LABELS[d];
+    b.addEventListener("click", () => onClick(d));
+    nav.appendChild(b);
+  }
+}
 let lastResult = null;
 
 function show(next, focusId) {
@@ -53,9 +70,11 @@ function showPick(id) {
   current.id = id;
   $("pick-title").textContent = GAMES[id].title;
   $("pick-blurb").textContent = GAMES[id].blurb;
+  const diffs = GAMES[id].diffs;
+  makeButtons($("diff-menu"), "btn", diffs, (d) => startGame(d));
+  $("diff-hint").textContent = diffs.includes("stages") ? "STAGES: starts easy, gets harder every stage." : "";
   show("pick");
-  const btn = document.querySelector(`#diff-menu [data-diff="${current.diff}"]`);
-  btn.focus();
+  document.querySelector(`#diff-menu [data-diff="${defaultDiff(id)}"]`).focus();
 }
 
 function seedFromInput() {
@@ -66,6 +85,7 @@ function seedFromInput() {
 // seed 0 = pick a random one
 function startGame(diff = current.diff, seed = seedFromInput()) {
   current.diff = diff;
+  lastDiff[current.id] = diff;
   current.seed = seed || randomSeed();
   const info = GAMES[current.id];
   game = new info.Game(
@@ -78,9 +98,9 @@ function startGame(diff = current.diff, seed = seedFromInput()) {
 function endGame(result) {
   lastResult = result;
   const board = boardFor(current.id, current.diff);
-  $("res-title").textContent = result.won ? "SOLVED!" : "GAME OVER";
+  $("res-title").textContent = result.title || (result.won ? "SOLVED!" : "GAME OVER");
   $("res-score").textContent = result.score;
-  $("res-detail").textContent = `${GAMES[current.id].title} · ${current.diff.toUpperCase()} · seed ${current.seed} · ${result.detail}`;
+  $("res-detail").textContent = `${GAMES[current.id].title}${GAMES[current.id].diffs.length > 1 ? " · " + DIFF_LABELS[current.diff] : ""} · seed ${current.seed} · ${result.detail}`;
   const top = board.load()[0];
   const qualifies = board.qualifies(result.score);
   $("res-note").textContent = !qualifies ? (result.score > 0 ? `Not quite top ${CONFIG.leaderboard.size} this time.` : "")
@@ -100,11 +120,13 @@ function boardFor(id, diff) {
   if (!boards[key]) boards[key] = new Leaderboard(CONFIG.leaderboard, key);
   return boards[key];
 }
-let view = { id: "codebreaker", diff: "normal" };
+let view = { id: "codebreaker", diff: "classic" };
 
 function showBoard(highlightId = null, message = "") {
   for (const t of document.querySelectorAll("#board-games .tab")) t.classList.toggle("on", t.dataset.game === view.id);
-  for (const t of document.querySelectorAll("#board-diffs .tab")) t.classList.toggle("on", t.dataset.diff === view.diff);
+  const diffs = GAMES[view.id].diffs;
+  if (!diffs.includes(view.diff)) view.diff = defaultDiff(view.id);
+  makeButtons($("board-diffs"), "tab", diffs.length > 1 ? diffs : [], (d) => { view.diff = d; showBoard(); }, view.diff);
   const rows = boardFor(view.id, view.diff).load();
   const body = $("board-rows");
   body.replaceChildren();
@@ -185,19 +207,17 @@ async function nativeShare() {
 
 // ---- wiring ----
 for (const b of document.querySelectorAll("#game-menu [data-game]")) b.addEventListener("click", () => showPick(b.dataset.game));
-for (const b of document.querySelectorAll("#diff-menu [data-diff]")) b.addEventListener("click", () => startGame(b.dataset.diff));
 $("seed-form").addEventListener("submit", (e) => {
   e.preventDefault();
-  startGame();
+  startGame(defaultDiff(current.id));
 });
 $("btn-pick-back").addEventListener("click", quitToMenu);
 for (const t of document.querySelectorAll("#board-games .tab")) t.addEventListener("click", () => { view.id = t.dataset.game; showBoard(); });
-for (const t of document.querySelectorAll("#board-diffs .tab")) t.addEventListener("click", () => { view.diff = t.dataset.diff; showBoard(); });
 $("btn-board").addEventListener("click", () => showBoard());
 $("btn-board-back").addEventListener("click", quitToMenu);
 $("btn-board-play").addEventListener("click", () => showPick(view.id));
 $("btn-board-clear").addEventListener("click", () => {
-  if (confirm(`Clear ${GAMES[view.id].title} ${view.diff.toUpperCase()} scores on this browser?`)) {
+  if (confirm(`Clear ${GAMES[view.id].title} ${DIFF_LABELS[view.diff]} scores on this browser?`)) {
     boardFor(view.id, view.diff).clear();
     showBoard();
   }
@@ -259,3 +279,6 @@ function frame(now) {
 
 show("home");
 requestAnimationFrame(frame);
+
+// For automated tests / curious students in the console.
+window.__mind = { get game() { return game; } };

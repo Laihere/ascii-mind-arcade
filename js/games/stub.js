@@ -21,7 +21,7 @@ export class StubGame {
   key() {}
 
   draw(r) {
-    hud(r, this.title, `${this.diff.toUpperCase()}  seed ${this.rng.seed}  ${fmtTime(this.time)}`);
+    hud(r, this.title, `${this.diff.toUpperCase()}  ${fmtTime(this.time)}`, this.rng.seed);
     r.centerText(Math.floor(r.rows / 2) - 2, "COMING SOON", C.dim);
     const label = "FINISH";
     button(r, Math.floor((r.cols - label.length - 2) / 2), Math.floor(r.rows / 2), label, "finish", { h: 3 });

@@ -7,19 +7,107 @@
   },
   "games": {
     "codebreaker": {
-      "easy": { "slots": 4, "symbols": 6, "repeats": false, "tries": 10 },
-      "normal": { "slots": 4, "symbols": 6, "repeats": true, "tries": 10 },
-      "hard": { "slots": 5, "symbols": 8, "repeats": true, "tries": 12 }
+      "classic": {
+        "slots": 4,
+        "symbols": 6,
+        "repeats": true,
+        "tries": 10,
+        "basePoints": 100,
+        "perTryLeft": 50,
+        "timeBonusSec": 90,
+        "timeBonusPerSec": 2
+      }
     },
     "recall": {
-      "easy": { "startSize": 3, "maxSize": 5, "startBlocks": 3, "flashMs": 1600, "lives": 3 },
-      "normal": { "startSize": 3, "maxSize": 6, "startBlocks": 3, "flashMs": 1200, "lives": 3 },
-      "hard": { "startSize": 4, "maxSize": 7, "startBlocks": 5, "flashMs": 900, "lives": 3 }
+      "easy": {
+        "startSize": 3,
+        "maxSize": 5,
+        "startBlocks": 3,
+        "flashMs": 1600,
+        "lives": 3
+      },
+      "normal": {
+        "startSize": 3,
+        "maxSize": 6,
+        "startBlocks": 3,
+        "flashMs": 1200,
+        "lives": 3
+      },
+      "hard": {
+        "startSize": 4,
+        "maxSize": 7,
+        "startBlocks": 5,
+        "flashMs": 900,
+        "lives": 3
+      },
+      "stages": {
+        "startSize": 3,
+        "maxSize": 7,
+        "startBlocks": 3,
+        "flashMs": 1600,
+        "minFlashMs": 700,
+        "lives": 3,
+        "stages": true
+      }
     },
     "pipes": {
-      "easy": { "w": 5, "h": 5 },
-      "normal": { "w": 7, "h": 7 },
-      "hard": { "w": 9, "h": 9 }
+      "easy": {
+        "w": 5,
+        "h": 5
+      },
+      "normal": {
+        "w": 7,
+        "h": 7
+      },
+      "hard": {
+        "w": 9,
+        "h": 9
+      },
+      "stages": {
+        "sizes": [
+          [
+            4,
+            4
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            7,
+            6
+          ],
+          [
+            7,
+            7
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            9,
+            9
+          ]
+        ],
+        "stages": true
+      }
     }
   },
   "leaderboard": {

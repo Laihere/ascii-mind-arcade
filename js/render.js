@@ -25,6 +25,7 @@ export class Renderer {
     this.fills = new Array(n).fill(null); // solid cell background
     this.zones = [];
     this.lastZones = [];
+    this.hudInset = 0; // cols kept free top-right (phone pause button sits there)
     this.resize();
   }
 
@@ -140,11 +141,19 @@ export class Renderer {
     ctx.fillRect(0, 0, cols * cellW, rows * cellH);
 
     // 1) solid cell fills (tiles, buttons), 2) glow boxes behind single chars
-    for (let i = 0; i < n; i++) {
-      const f = this.fills[i];
-      if (!f) continue;
-      ctx.fillStyle = f;
-      ctx.fillRect((i % cols) * cellW, Math.floor(i / cols) * cellH, cellW + 0.5, cellH + 0.5);
+    // runs of the same fill on a row are painted as one rect on whole pixels (no seams)
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; ) {
+        const f = this.fills[y * cols + x];
+        let end = x + 1;
+        while (end < cols && this.fills[y * cols + end] === f) end++;
+        if (f) {
+          const px = Math.round(x * cellW);
+          ctx.fillStyle = f;
+          ctx.fillRect(px, y * cellH, Math.round(end * cellW) - px, cellH);
+        }
+        x = end;
+      }
     }
     for (let i = 0; i < n; i++) {
       const bg = this.bgs[i];

@@ -8,23 +8,15 @@ export const CONFIG = {
   },
   "games": {
     "codebreaker": {
-      "easy": {
-        "slots": 4,
-        "symbols": 6,
-        "repeats": false,
-        "tries": 10
-      },
-      "normal": {
+      "classic": {
         "slots": 4,
         "symbols": 6,
         "repeats": true,
-        "tries": 10
-      },
-      "hard": {
-        "slots": 5,
-        "symbols": 8,
-        "repeats": true,
-        "tries": 12
+        "tries": 10,
+        "basePoints": 100,
+        "perTryLeft": 50,
+        "timeBonusSec": 90,
+        "timeBonusPerSec": 2
       }
     },
     "recall": {
@@ -48,6 +40,15 @@ export const CONFIG = {
         "startBlocks": 5,
         "flashMs": 900,
         "lives": 3
+      },
+      "stages": {
+        "startSize": 3,
+        "maxSize": 7,
+        "startBlocks": 3,
+        "flashMs": 1600,
+        "minFlashMs": 700,
+        "lives": 3,
+        "stages": true
       }
     },
     "pipes": {
@@ -62,6 +63,51 @@ export const CONFIG = {
       "hard": {
         "w": 9,
         "h": 9
+      },
+      "stages": {
+        "sizes": [
+          [
+            4,
+            4
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            7,
+            6
+          ],
+          [
+            7,
+            7
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            9,
+            9
+          ]
+        ],
+        "stages": true
       }
     }
   },

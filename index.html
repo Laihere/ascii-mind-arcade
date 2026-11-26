@@ -42,11 +42,8 @@
     <section id="pick" class="panel hidden">
       <h2 id="pick-title"></h2>
       <p id="pick-blurb" class="blurb"></p>
-      <nav class="menu row" id="diff-menu">
-        <button class="btn" data-diff="easy">EASY</button>
-        <button class="btn" data-diff="normal">NORMAL</button>
-        <button class="btn" data-diff="hard">HARD</button>
-      </nav>
+      <nav class="menu row" id="diff-menu"></nav>
+      <p id="diff-hint" class="hint"></p>
       <form id="seed-form" class="seed-form" autocomplete="off">
         <label for="seed-input">SEED</label>
         <input id="seed-input" inputmode="numeric" maxlength="5" placeholder="random" spellcheck="false" enterkeyhint="done">
@@ -65,11 +62,7 @@
         <button class="tab" data-game="recall">RECALL</button>
         <button class="tab" data-game="pipes">PIPES</button>
       </nav>
-      <nav class="tabs" id="board-diffs">
-        <button class="tab" data-diff="easy">EASY</button>
-        <button class="tab" data-diff="normal">NORMAL</button>
-        <button class="tab" data-diff="hard">HARD</button>
-      </nav>
+      <nav class="tabs" id="board-diffs"></nav>
       <p id="board-msg" class="big hidden"></p>
       <table class="scores">
         <thead><tr><th>#</th><th>NAME</th><th>SCORE</th><th>RESULT</th></tr></thead>
