@@ -55,7 +55,7 @@
       <nav class="tabs" id="board-diffs"></nav>
       <p id="board-msg" class="big hidden"></p>
       <table class="scores">
-        <thead><tr><th>#</th><th>NAME</th><th>SCORE</th><th>RESULT</th></tr></thead>
+        <thead><tr><th>#</th><th>NAME</th><th id="board-score-th">SCORE</th><th>RESULT</th></tr></thead>
         <tbody id="board-rows"></tbody>
       </table>
       <p id="board-empty" class="hint hidden">No scores yet. Be the first!</p>
@@ -96,7 +96,7 @@
     <!-- Result / name entry -->
     <section id="result" class="panel dim hidden">
       <h2 id="res-title">SOLVED!</h2>
-      <p class="big">SCORE <span id="res-score">0</span></p>
+      <p class="big"><span id="res-score-label" class="plain">SCORE</span> <span id="res-score">0</span></p>
       <p id="res-detail" class="hint"></p>
       <p id="res-note" class="note"></p>
       <form id="name-form" autocomplete="off">

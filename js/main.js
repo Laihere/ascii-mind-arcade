@@ -116,7 +116,7 @@ function showPick(id) {
   $("pick-blurb").textContent = GAMES[id].blurb;
   const diffs = GAMES[id].diffs;
   makeButtons($("diff-menu"), "btn", diffs, (d) => startGame(d));
-  $("diff-hint").textContent = diffs.includes("stages") ? "STAGES: starts easy, gets harder every stage." : "";
+  $("diff-hint").textContent = GAMES[id].hint || "";
   show("pick");
   document.querySelector(`#diff-menu [data-diff="${defaultDiff(id)}"]`).focus();
 }
@@ -143,6 +143,7 @@ function endGame(result) {
   lastResult = result;
   const board = boardFor(current.id, current.diff);
   $("res-title").textContent = result.title || (result.won ? "SOLVED!" : "GAME OVER");
+  $("res-score-label").textContent = result.scoreLabel || "SCORE";
   $("res-score").textContent = result.score;
   $("res-detail").textContent = `${GAMES[current.id].title}${GAMES[current.id].diffs.length > 1 ? " · " + DIFF_LABELS[current.diff] : ""} · seed ${current.seed} · ${result.detail}`;
   const top = board.load()[0];
@@ -171,6 +172,7 @@ function showBoard(highlightId = null, message = "") {
   const diffs = GAMES[view.id].diffs;
   if (!diffs.includes(view.diff)) view.diff = defaultDiff(view.id);
   makeButtons($("board-diffs"), "tab", diffs.length > 1 ? diffs : [], (d) => { view.diff = d; showBoard(); }, view.diff);
+  $("board-score-th").textContent = (GAMES[view.id].scoreLabels || {})[view.diff] || "SCORE";
   const rows = boardFor(view.id, view.diff).load();
   const body = $("board-rows");
   body.replaceChildren();

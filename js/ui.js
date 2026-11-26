@@ -26,7 +26,10 @@ export function hud(r, title, right, seed) {
   const rightX = r.cols - 1 - r.hudInset;
   const fits = r.labelW(title) + 2 + r.labelW(right) + r.hudInset <= r.cols - 2;
   r.label(rightX, fits ? 0.5 : 2.4, right, T.text, { size: fits ? 1 : 0.9, align: "right" });
-  if (seed) r.label(1, 2.4, `SEED ${seed}`, T.muted, { size: 0.75 });
+  // seed under the title, unless the info line already fills that row
+  const seedText = `SEED ${seed}`;
+  const room = fits || r.labelW(seedText, 0.75) + r.labelW(right, 0.9) + 3 + r.hudInset <= r.cols;
+  if (seed && room) r.label(1, 2.4, seedText, T.muted, { size: 0.75 });
 }
 
 // Tappable raised button with a pixel-font label. Returns its width (cells).

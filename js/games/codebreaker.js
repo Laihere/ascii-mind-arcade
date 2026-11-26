@@ -1,6 +1,7 @@
 // CODE BREAKER: guess a hidden code of coloured pegs. After each guess:
 //   solid white = right colour in the right place, ring = right colour in the wrong place.
-// Crack codes one after another; the run ends when a code isn't cracked in time.
+// Modes (cfg.mode): streak = first missed code ends the run; timed = crack as many as you
+// can before the clock runs out; endless = misses just reset the streak, END when you like.
 import { hud, button, panel, fmtTime } from "../ui.js";
 import { T, tint } from "../theme.js";
 
@@ -44,11 +45,15 @@ export class CodeBreaker {
   constructor({ title, cfg, rng }, hooks) {
     this.title = title;
     this.cfg = cfg;
+    this.mode = cfg.mode || "streak";
     this.rng = rng;
     this.hooks = hooks;
     this.score = 0;
     this.solved = 0;
+    this.streak = 0;
+    this.bestStreak = 0;
     this.total = 0; // seconds over the whole run
+    this.timeLeft = this.mode === "timed" ? cfg.timeLimitSec : 0;
     this.newCode();
   }
 
@@ -58,13 +63,22 @@ export class CodeBreaker {
     this.rows = []; // { guess, exact, near }
     this.guess = new Array(this.cfg.slots).fill(null); // null = empty slot
     this.codeTime = 0;
-    this.phase = "play"; // play | cracked | failed
+    this.phase = "play"; // play | cracked | failed | over
     this.timer = 0;
     this.msg = "";
   }
 
   update(dt) {
+    if (this.phase === "over") return;
     this.total += dt;
+    if (this.mode === "timed") {
+      this.timeLeft -= dt;
+      if (this.timeLeft <= 0) {
+        this.timeLeft = 0;
+        this.finish();
+        return;
+      }
+    }
     if (this.phase === "play") {
       this.codeTime += dt;
       return;
@@ -73,15 +87,31 @@ export class CodeBreaker {
     if (this.timer > 0) return;
     if (this.phase === "cracked") this.newCode();
     else if (this.phase === "failed") {
-      this.phase = "over";
-      const n = this.solved;
-      this.hooks.onEnd({
-        won: n > 0,
-        title: n ? `${n} CODE${n > 1 ? "S" : ""} CRACKED` : "GAME OVER",
-        score: this.score,
-        detail: `${n} code${n === 1 ? "" : "s"} · ${fmtTime(this.total)}`,
-      });
+      if (this.mode === "streak") this.finish();
+      else this.newCode(); // timed / endless: keep going with a fresh code
     }
+  }
+
+  finish() {
+    this.phase = "over";
+    const n = this.solved;
+    const codes = `${n} code${n === 1 ? "" : "s"}`;
+    if (this.mode === "endless") {
+      this.hooks.onEnd({
+        won: this.bestStreak > 0,
+        title: `BEST STREAK ${this.bestStreak}`,
+        scoreLabel: "BEST STREAK",
+        score: this.bestStreak,
+        detail: `${this.score} pts · ${codes} · ${fmtTime(this.total)}`,
+      });
+      return;
+    }
+    this.hooks.onEnd({
+      won: n > 0,
+      title: this.mode === "timed" ? `TIME UP! ${n} CODE${n === 1 ? "" : "S"}` : n ? `${n} CODE${n > 1 ? "S" : ""} CRACKED` : "GAME OVER",
+      score: this.score,
+      detail: `${codes} · best streak ${this.bestStreak} · ${fmtTime(this.total)}`,
+    });
   }
 
   get filled() {
@@ -115,13 +145,16 @@ export class CodeBreaker {
       const pts = codePoints(this.cfg, this.rows.length, this.codeTime);
       this.score += pts;
       this.solved++;
+      this.streak++;
+      this.bestStreak = Math.max(this.bestStreak, this.streak);
       this.phase = "cracked";
       this.timer = 1.8;
       this.msg = `CRACKED IN ${this.rows.length}! +${pts}`;
     } else if (this.rows.length >= this.cfg.tries) {
       this.phase = "failed";
-      this.timer = 3;
-      this.msg = "OUT OF TRIES";
+      this.timer = this.mode === "streak" ? 3 : 2.4;
+      this.msg = this.mode === "streak" ? "OUT OF TRIES" : this.streak ? "MISSED - STREAK RESET" : "MISSED - NEW CODE";
+      this.streak = 0;
     }
   }
 
@@ -129,6 +162,7 @@ export class CodeBreaker {
     if (id.startsWith("sym")) this.add(Number(id.slice(3)));
     else if (id === "undo") this.undo();
     else if (id === "check") this.check();
+    else if (id === "end" && this.mode === "endless" && this.phase !== "over") this.finish();
     else if (id.startsWith("slot") && this.phase === "play") this.guess[Number(id.slice(4))] = null; // take that peg out
   }
 
@@ -162,7 +196,8 @@ export class CodeBreaker {
 
   draw(r) {
     const { slots, symbols, tries } = this.cfg;
-    hud(r, this.title, `#${this.solved + 1}  ${this.score} PTS  ${fmtTime(this.total)}`, this.rng.seed);
+    const clock = this.mode === "timed" ? `${fmtTime(Math.ceil(this.timeLeft))} LEFT` : fmtTime(this.total);
+    hud(r, this.title, `${this.score} PTS  STREAK ${this.streak}  ${clock}`, this.rng.seed);
     const top = 4.2;
     const btnH = 3;
 
@@ -317,16 +352,17 @@ export class CodeBreaker {
   // UNDO (secondary) + CHECK (primary, the one filled accent button), centred on cx.
   drawActions(r, cx, y, h) {
     const size = 0.85;
-    const uw = Math.ceil(r.labelW("UNDO", size) + 5);
-    const cw = Math.ceil(r.labelW("CHECK", size) + 6);
-    const ax = cx - (uw + cw + 1.5) / 2;
-    button(r, ax, y, "UNDO", "undo", { h, w: uw, size, disabled: this.phase !== "play" || this.filled === 0 });
-    button(r, ax + uw + 1.5, y, "CHECK", "check", {
-      h,
-      w: cw,
-      size,
-      primary: true,
-      disabled: this.phase !== "play" || this.filled < this.cfg.slots,
-    });
+    const endless = this.mode === "endless";
+    const uw = Math.ceil(r.labelW("UNDO", size) + 4);
+    const cw = Math.ceil(r.labelW("CHECK", size) + 5);
+    const ew = endless ? Math.ceil(r.labelW("END", size) + 4) : 0;
+    const gap = 1.2;
+    let ax = cx - (uw + cw + (endless ? ew + gap : 0) + gap) / 2;
+    const playing = this.phase === "play";
+    button(r, ax, y, "UNDO", "undo", { h, w: uw, size, disabled: !playing || this.filled === 0 });
+    ax += uw + gap;
+    button(r, ax, y, "CHECK", "check", { h, w: cw, size, primary: true, disabled: !playing || this.filled < this.cfg.slots });
+    ax += cw + gap;
+    if (endless) button(r, ax, y, "END", "end", { h, w: ew, size, disabled: this.phase === "over" });
   }
 }

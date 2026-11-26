@@ -16,7 +16,31 @@ export const CONFIG = {
         "basePoints": 100,
         "perTryLeft": 50,
         "timeBonusSec": 90,
-        "timeBonusPerSec": 2
+        "timeBonusPerSec": 2,
+        "mode": "streak"
+      },
+      "timed": {
+        "slots": 4,
+        "symbols": 6,
+        "repeats": true,
+        "tries": 10,
+        "basePoints": 100,
+        "perTryLeft": 50,
+        "timeBonusSec": 90,
+        "timeBonusPerSec": 2,
+        "mode": "timed",
+        "timeLimitSec": 180
+      },
+      "endless": {
+        "slots": 4,
+        "symbols": 6,
+        "repeats": true,
+        "tries": 10,
+        "basePoints": 100,
+        "perTryLeft": 50,
+        "timeBonusSec": 90,
+        "timeBonusPerSec": 2,
+        "mode": "endless"
       }
     },
     "recall": {
